@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace MorkoBotRavenEdition.Models
 {
-    class UserProfile
+    internal class UserProfile
     {
         [Key]
         public ulong Identifier { get; set; }

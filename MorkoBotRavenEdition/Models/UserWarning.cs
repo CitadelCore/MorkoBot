@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace MorkoBotRavenEdition.Models
 {
-    class UserWarning
+    internal class UserWarning
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

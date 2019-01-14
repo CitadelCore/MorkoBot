@@ -7,7 +7,7 @@ using System.Text;
 
 namespace MorkoBotRavenEdition.Models
 {
-    class VanityRole
+    internal class VanityRole
     {
         [Key]
         public ulong Id { get; set; }
@@ -17,10 +17,11 @@ namespace MorkoBotRavenEdition.Models
         [NotMapped]
         public RoleRestrictionLevel RestrictionLevel
         {
-            get { return _RestrictionLevel == null ? RoleRestrictionLevel.ManualOnly : JsonConvert.DeserializeObject<RoleRestrictionLevel>(_RestrictionLevel); }
-            set { _RestrictionLevel = JsonConvert.SerializeObject(value); }
+            get => RestrictionLevelInternal == null ? RoleRestrictionLevel.ManualOnly : JsonConvert.DeserializeObject<RoleRestrictionLevel>(RestrictionLevelInternal);
+            set => RestrictionLevelInternal = JsonConvert.SerializeObject(value);
         }
-        public string _RestrictionLevel { get; set; }
+
+        private string RestrictionLevelInternal { get; set; }
 
         public enum RoleRestrictionLevel
         {

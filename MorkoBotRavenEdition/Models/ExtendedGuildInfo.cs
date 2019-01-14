@@ -10,7 +10,7 @@ namespace MorkoBotRavenEdition.Models
     /// <summary>
     /// Holds extended information for a Discord guild.
     /// </summary>
-    class ExtendedGuildInfo
+    internal class ExtendedGuildInfo
     {
         /// <summary>
         /// Guild identifier. This should correspond to the

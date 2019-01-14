@@ -1,26 +1,30 @@
 ﻿using Discord;
 using Discord.Commands;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MorkoBotRavenEdition.Modules
 {
-    class MorkoModuleBase : ModuleBase<CommandContext>
+    internal class MorkoModuleBase : ModuleBase<CommandContext>
     {
+        protected readonly IServiceProvider ServiceProvider;
+
+        protected MorkoModuleBase(IServiceProvider serviceProvider)
+        {
+            ServiceProvider = serviceProvider;
+        }
+
         protected EmbedBuilder GetResponseEmbed(string info, Color? color = null)
         {
             if (color == null)
                 color = Color.Green;
 
-            string title = "Module";
+            var title = "Module";
 
             if (GetType().GetCustomAttributes(typeof(SummaryAttribute), true).FirstOrDefault() is SummaryAttribute summaryAttribute)
                 title = summaryAttribute.Text;
 
-            EmbedBuilder builder = new EmbedBuilder()
+            var builder = new EmbedBuilder()
             {
                 Title = title,
                 Description = info,

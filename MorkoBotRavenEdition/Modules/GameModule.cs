@@ -1,30 +1,29 @@
 ﻿using Discord;
 using Discord.Commands;
 using MorkoBotRavenEdition.Attributes;
-using MorkoBotRavenEdition.Models;
 using MorkoBotRavenEdition.Services;
 using MorkoBotRavenEdition.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MorkoBotRavenEdition.Modules
 {
     [Summary("Game Module")]
-    class GameModule : MorkoModuleBase
+    [Group("game")]
+    internal class GameModule : MorkoModuleBase
     {
-        private static Random random = new Random();
+        private static readonly Random Random = new Random();
         private readonly UserService _userService;
         private readonly GuildInfoService _infoService;
 
         // Increment specific vars
-        private static IUserMessage incrementCache;
-        private static readonly int incrementXP = 25;
-        
+        private static IUserMessage _incrementCache;
+        private const int IncrementXp = 25;
+
         // Other specific vars
-        private static IList<string> VideoUris = new List<string>()
+        private static readonly IList<string> VideoUris = new List<string>()
         {
             "https://youtu.be/330YX8TWNWA",
             "https://youtu.be/e_sk8t4XNV0",
@@ -46,37 +45,38 @@ namespace MorkoBotRavenEdition.Modules
             "https://www.youtube.com/watch?v=_s4Byjvc-hs"
         };
 
-        public GameModule(UserService userService, GuildInfoService infoService)
+        public GameModule(IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            _userService = userService;
-            _infoService = infoService;
+            _userService = serviceProvider.GetService<UserService>();
+            _infoService = serviceProvider.GetService<GuildInfoService>();
         }
 
-        [Command("nullifact"), Summary("Nullifacts a user. Use with caution.")]
-        public async Task NullifactAsync([Summary("The user to nullifact.")] IUser user)
+        [Command("nullifact"), Summary(@"Nullifacts a user. Use with caution.")]
+        public async Task NullifactAsync([Summary(@"The user to nullifact.")] IUser user)
         {
-            await Context.Channel.SendMessageAsync(String.Format("{0}, prepare for nullifaction. <:5pm:423182998343516170>\nVerdict has been authenticated and will be executed now.", user.Mention));
+            await Context.Channel.SendMessageAsync("{user.Mention}, prepare for nullifaction. <:5pm:423182998343516170>\nVerdict has been authenticated and will be executed now.");
             await Task.Delay(2000);
 
             // Send the video payload
-            string video = VideoUris[random.Next(0, VideoUris.Count)];
+            var video = VideoUris[Random.Next(0, VideoUris.Count)];
             await Context.Channel.SendMessageAsync(video);
         }
 
-        [Command("increment"), Summary("Increments your increment counter.")]
+        [Command("increment"), Summary(@"Increments your increment counter.")]
         public async Task IncrementAsync()
         {
-            UserProfile profile = await _userService.GetProfile(Context.User.Id, Context.Guild.Id);
+            var profile = await _userService.GetProfile(Context.User.Id, Context.Guild.Id);
 
-            if (profile.LastIncremented != null && !(DateTime.Now >= (profile.LastIncremented + TimeSpan.FromHours(1))))
+            if (!(DateTime.Now >= profile.LastIncremented + TimeSpan.FromHours(1)))
             {
-                await MessageUtilities.SendPMSafely(Context.User, Context.Channel, String.Empty, false, 
-                    GetResponseEmbed(String.Format("You cannot increment again yet because you have already incremented in the last hour. {0} minutes left until you can increment again.",
-                    (DateTime.Now - (profile.LastIncremented + TimeSpan.FromHours(1))).Minutes), Color.Red).Build());
+                var minutesLeft = (profile.LastIncremented + TimeSpan.FromHours(1) - DateTime.Now).Minutes;
+
+                await MessageUtilities.SendPmSafely(Context.User, Context.Channel, string.Empty, false, 
+                    GetResponseEmbed($"You cannot increment again yet because you have already incremented in the last hour. {minutesLeft} minutes left until you can increment again.", Color.Red).Build());
                 return;
             }
 
-            await _userService.AddExperience(profile, incrementXP);
+            await _userService.AddExperience(profile, IncrementXp);
             await UpdateGuildIncrement();
 
             profile.LastIncremented = DateTime.Now;
@@ -84,32 +84,32 @@ namespace MorkoBotRavenEdition.Modules
             await _userService.SaveProfile(profile);
         }
 
-        [Command("increment info"), Summary("Retrieves information about the current increment counter.")]
+        [Command("increment info"), Summary(@"Retrieves information about the current increment counter.")]
         public async Task IncrementInfoAsync()
         {
-            ExtendedGuildInfo guildInfo = await _infoService.GetGuildInfo(Context.Guild.Id);
+            var guildInfo = await _infoService.GetGuildInfo(Context.Guild.Id);
 
-            EmbedBuilder builder = new EmbedBuilder();
-            builder.WithTitle("Game Module");
-            builder.WithDescription("Showing current increment statistics.");
+            var builder = new EmbedBuilder();
+            builder.WithTitle(@"Game Module");
+            builder.WithDescription(@"Showing current increment statistics.");
             builder.WithColor(Color.Green);
-            builder.AddField("Current Count", guildInfo.IncrementCount, true);
-            builder.AddField("Target Count", guildInfo.IncrementTarget, true);
-            builder.AddField("Increments Left", guildInfo.IncrementTarget - guildInfo.IncrementCount, true);
+            builder.AddField(@"Current Count", guildInfo.IncrementCount, true);
+            builder.AddField(@"Target Count", guildInfo.IncrementTarget, true);
+            builder.AddField(@"Increments Left", guildInfo.IncrementTarget - guildInfo.IncrementCount, true);
 
-            await Context.Channel.SendMessageAsync(String.Empty, false, builder.Build());
+            await Context.Channel.SendMessageAsync(string.Empty, false, builder.Build());
         }
 
-        [Command("increment reset"), Summary("Can be used by moderators to reset a user's increment cooldown.")]
+        [Command("increment reset"), Summary(@"Can be used by moderators to reset a user's increment cooldown.")]
         [PermitRoles("Discord Moderator")]
-        public async Task IncrementResetAsync([Summary("The user to reset.")] IUser user)
+        public async Task IncrementResetAsync([Summary(@"The user to reset.")] IUser user)
         {
-            UserProfile profile = await _userService.GetProfile(Context.User.Id, Context.Guild.Id);
-
+            var profile = await _userService.GetProfile(Context.User.Id, Context.Guild.Id);
+            
             profile.LastIncremented = DateTime.Now - TimeSpan.FromHours(1);
             await _userService.SaveProfile(profile);
 
-            await MessageUtilities.SendPMSafely(Context.User, Context.Channel, String.Empty, false, GetResponseEmbed("Successfully reset the user's increment cooldown.", Color.Green).Build());
+            await MessageUtilities.SendPmSafely(Context.User, Context.Channel, string.Empty, false, GetResponseEmbed(@"Successfully reset the user's increment cooldown.", Color.Green).Build());
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace MorkoBotRavenEdition.Modules
         /// </summary>
         private async Task UpdateGuildIncrement()
         {
-            ExtendedGuildInfo guildInfo = await _infoService.GetGuildInfo(Context.Guild.Id);
+            var guildInfo = await _infoService.GetGuildInfo(Context.Guild.Id);
             guildInfo.IncrementCount += 1;
 
             // Counter has reached its maximum.
@@ -128,30 +128,30 @@ namespace MorkoBotRavenEdition.Modules
                 guildInfo.IncrementTarget = guildInfo.IncrementTarget * 2;
                 await _infoService.SaveGuildInfo(guildInfo);
 
-                EmbedBuilder targetBuilder = new EmbedBuilder();
-                targetBuilder.WithTitle("Game Module");
-                targetBuilder.WithDescription("The increment target has been reached. The increment counter has been reset and the target count has been doubled.");
+                var targetBuilder = new EmbedBuilder();
+                targetBuilder.WithTitle(@"Game Module");
+                targetBuilder.WithDescription(@"The increment target has been reached. The increment counter has been reset and the target count has been doubled.");
                 targetBuilder.WithColor(Color.Green);
-                targetBuilder.AddField("New Target", guildInfo.IncrementTarget, true);
+                targetBuilder.AddField(@"New Target", guildInfo.IncrementTarget, true);
 
-                await Context.Channel.SendMessageAsync(String.Empty, false, targetBuilder.Build());
+                await Context.Channel.SendMessageAsync(string.Empty, false, targetBuilder.Build());
                 return;
             }
 
             await _infoService.SaveGuildInfo(guildInfo);
 
-            if (incrementCache != null)
-                await incrementCache.DeleteAsync();
+            if (_incrementCache != null)
+                await _incrementCache.DeleteAsync();
 
-            EmbedBuilder builder = new EmbedBuilder();
-            builder.WithTitle("Game Module");
-            builder.WithDescription("The server-wide increment count has been updated.");
+            var builder = new EmbedBuilder();
+            builder.WithTitle(@"Game Module");
+            builder.WithDescription(@"The server-wide increment count has been updated.");
             builder.WithColor(Color.Green);
-            builder.AddField("Previous Count", guildInfo.IncrementCount - 1, true);
-            builder.AddField("New Count", guildInfo.IncrementCount, true);
-            builder.AddField("Target Count", guildInfo.IncrementTarget, true);
+            builder.AddField(@"Previous Count", guildInfo.IncrementCount - 1, true);
+            builder.AddField(@"New Count", guildInfo.IncrementCount, true);
+            builder.AddField(@"Target Count", guildInfo.IncrementTarget, true);
 
-            incrementCache = await Context.Channel.SendMessageAsync(String.Empty, false, builder.Build());
+            _incrementCache = await Context.Channel.SendMessageAsync(string.Empty, false, builder.Build());
         }
     }
 }

@@ -6,7 +6,7 @@ using static MorkoBotRavenEdition.Services.ShopService;
 
 namespace MorkoBotRavenEdition.Models
 {
-    class UserItemDefinition
+    internal class UserItemDefinition
     {
         public string Name;
         public string Description;

@@ -3,14 +3,13 @@ using MorkoBotRavenEdition.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using MorkoBotRavenEdition.Utilities;
 
 namespace MorkoBotRavenEdition.Services
 {
-    class ShopService
+    internal class ShopService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly DiscordSocketClient _client;
@@ -62,7 +61,7 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task BuyItem(UserProfile profile, UserItemDefinition item, int amount = 1)
         {
-            int finalPrice = item.Price * amount;
+            var finalPrice = item.Price * amount;
 
             // Do internal checks if the user can afford the item
             switch (item.CurrencyType)
@@ -73,8 +72,10 @@ namespace MorkoBotRavenEdition.Services
                     throw new NotImplementedException();
                 case CurrencyType.SewerCoin:
                     if (profile.OpenSewerTokens < finalPrice)
-                        throw new ArgumentException("You cannot afford this item.", "item");
+                        throw new ArgumentException("You cannot afford this item.", nameof(item));
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(item), "Invalid currency type.");
             }
 
             await AddItem(profile, item, amount);
@@ -87,7 +88,7 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task AddItem(UserProfile profile, UserItemDefinition item, int amount = 1)
         {
-            UserItem userItem = _context.UserItems.Where(w => w.UserId == profile.Identifier && w.Guild == profile.GuildIdentifier && w.Name == item.Name).FirstOrDefault();
+            var userItem = _context.UserItems.FirstOrDefault(w => w.UserId == profile.Identifier && w.Guild == profile.GuildIdentifier && w.Name == item.Name);
             if (userItem != null)
             {
                 userItem.Amount += amount;
@@ -118,12 +119,12 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task RemoveItem(UserProfile profile, UserItemDefinition item, int amount = 1)
         {
-            UserItem userItem = _context.UserItems.Where(w => w.UserId == profile.Identifier && w.Guild == profile.GuildIdentifier && w.Name == item.Name).FirstOrDefault();
+            var userItem = _context.UserItems.FirstOrDefault(w => w.UserId == profile.Identifier && w.Guild == profile.GuildIdentifier && w.Name == item.Name);
             if (userItem == null)
-                throw new ArgumentException("User profile contains no items of this type in this guild.", "item");
+                throw new ArgumentException("User profile contains no items of this type in this guild.", nameof(item));
 
             if (userItem.Amount < amount)
-                throw new ArgumentException("Cannot remove more items than the user has.", "amount");
+                throw new ArgumentException("Cannot remove more items than the user has.", nameof(amount));
 
             if (userItem.Amount == amount)
             {
@@ -143,7 +144,6 @@ namespace MorkoBotRavenEdition.Services
                 userItem.Amount = userItem.Amount - amount;
                 _context.Update(userItem);
                 await _context.SaveChangesAsync();
-                return;
             }
         }
 
@@ -162,9 +162,9 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public UserItemDefinition DefinitionFromItem(string itemName)
         {
-            UserItemDefinition item = GetItems().Where(i => i.Name == itemName).FirstOrDefault();
+            var item = GetItems().FirstOrDefault(i => i.Name == itemName);
             if (item == null)
-                throw new ArgumentException("Could not find an item with the specified name.", "itemName");
+                throw new ArgumentException("Could not find an item with the specified name.", nameof(itemName));
 
             return item;
         }

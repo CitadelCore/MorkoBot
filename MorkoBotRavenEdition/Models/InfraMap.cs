@@ -4,11 +4,11 @@ using System.Text;
 
 namespace MorkoBotRavenEdition.Models
 {
-    class InfraMap
+    internal class InfraMap
     {
         public InfraMap(string name) { Name = name; }
 
-        public string Name { get; private set; }
+        public string Name { get; }
         public string BspName;
         public string ThumbUrl;
         public string WikiUrl;

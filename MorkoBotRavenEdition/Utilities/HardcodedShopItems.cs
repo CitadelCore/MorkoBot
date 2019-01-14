@@ -6,7 +6,7 @@ using static MorkoBotRavenEdition.Services.ShopService;
 
 namespace MorkoBotRavenEdition.Utilities
 {
-    class HardcodedShopItems
+    internal static class HardcodedShopItems
     {
         public static readonly IList<UserItemDefinition> Items = new List<UserItemDefinition>
         {

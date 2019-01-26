@@ -9,6 +9,7 @@ using MorkoBotRavenEdition.Services.Roleplay;
 
 namespace MorkoBotRavenEdition.Modules.Roleplay
 {
+#if ROLEPLAY_ENABLED
     [Group("roleplay"), Alias("rp", "role"), Summary("Roleplay Module")]
     internal partial class RoleplayModule : MorkoModuleBase
     {
@@ -18,4 +19,5 @@ namespace MorkoBotRavenEdition.Modules.Roleplay
             _roleplayService = serviceProvider.GetService<RoleplayService>();
         }
     }
+#endif
 }

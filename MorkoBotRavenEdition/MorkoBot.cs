@@ -78,6 +78,7 @@ namespace MorkoBotRavenEdition
             var infoService = new GuildInfoService(_client, context);
             serviceCollection.AddSingleton(typeof(ILoggerFactory), factory);
             serviceCollection.AddSingleton(typeof(ILogger), factory.CreateLogger("MorkoBot Audit Provider"));
+            serviceCollection.AddSingleton(typeof(BanTrackerService));
             serviceCollection.AddSingleton(context);
             serviceCollection.AddSingleton(_client);
             serviceCollection.AddSingleton(userService);

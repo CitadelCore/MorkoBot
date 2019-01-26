@@ -7,6 +7,7 @@ using log4net.Core;
 
 namespace MorkoBotRavenEdition.Services.Roleplay
 {
+#if ROLEPLAY_ENABLED
     internal partial class RoleplayService
     {
         private readonly DiscordSocketClient _socketClient;
@@ -20,4 +21,5 @@ namespace MorkoBotRavenEdition.Services.Roleplay
             _dbContext = dbContext;
         }
     }
+#endif
 }

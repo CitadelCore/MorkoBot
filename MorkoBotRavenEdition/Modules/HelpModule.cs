@@ -84,7 +84,7 @@ namespace MorkoBotRavenEdition.Modules
 
                 var userPm = new EmbedBuilder();
                 userPm.WithTitle(@"Server Command Information");
-                userPm.WithDescription(string.Format(@"Showing extended help for command {0}.", commandName));
+                userPm.WithDescription($@"Showing extended help for command {commandName}.");
 
                 var summary = command.Summary;
                 if (string.IsNullOrEmpty(summary))

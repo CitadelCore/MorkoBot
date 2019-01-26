@@ -14,9 +14,11 @@ namespace MorkoBotRavenEdition.Modules
     internal class AdminModule : MorkoModuleBase
     {
         private readonly UserService _userService;
+        private readonly BanTrackerService _banTrackerService;
         public AdminModule(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _userService = serviceProvider.GetService<UserService>();
+            _banTrackerService = serviceProvider.GetService<BanTrackerService>();
         }
 
         [Command("warn"), Summary(@"Submits a disciplinary warning to a user's profile.")]
@@ -52,23 +54,40 @@ namespace MorkoBotRavenEdition.Modules
             await ReplyAsync(string.Empty, false, adminPm.Build());
         }
 
-        [Command("ban"), Summary(@"Bans a user from the server, with an optional prune duration and reason to be logged. If the duration is not specified, the ban will be permanent.")]
+        [Command("ban"), Summary(@"Bans a user from the server, with an optional ban duration, prune duration and reason to be logged. If the duration is not specified, the ban will be permanent.")]
         [PermitRoles("Discord Moderator")]
         [RequireBotPermission(GuildPermission.BanMembers)]
-        public async Task BanAsync([Summary(@"The user to ban.")] IUser user, [Summary(@"Days from which the user's messages should be pruned.")] int pruneDays = 0, [Summary(@"The ban reason to be logged. Optional.")] string reason = null)
+        public async Task BanAsync([Summary(@"The user to ban.")] IUser user, [Summary(@"Hours until the ban expires. 0 to never expire.")] int banHours = 0, [Summary(@"Days from which the user's messages should be pruned.")] int pruneDays = 0, [Summary(@"The ban reason to be logged. Optional.")] string reason = null)
         {
             await _userService.ThrowIfCannotModify(Context.User, user);
 
             // Build the user PM message
-            var userPm = GetResponseEmbed($@"You've been banned from the server {Context.Guild.Name}. For more information, please contact a staff member.", Color.Red);
+            var userPm = GetResponseEmbed($@"Your membership of {Context.Guild.Name} has been temporarily suspended. For more information, please contact a staff member.", Color.Red);
 
             // Send the PM and ban the user
             await user.SendMessageAsync(string.Empty, false, userPm.Build());
             await Context.Guild.AddBanAsync(user, pruneDays, reason);
 
+            // Add the ban timer
+            if (banHours != 0)
+                _banTrackerService.StartTrackingBan(Context.Guild, user.Id, banHours);
+
             // Send the result message
             var adminPm = GetResponseEmbed($@"<:banboot:418448078031290369> Successfully banned the user {user.Username} from the server. This action has been logged.", Color.Green);
 
+            await ReplyAsync(string.Empty, false, adminPm.Build());
+        }
+
+        [Command("unban"), Summary(@"Revokes a user's ban.")]
+        [PermitRoles("Discord Moderator")]
+        [RequireBotPermission(GuildPermission.BanMembers)]
+        public async Task UnbanAsync([Summary(@"The user to unban.")] IUser user)
+        {
+            await _userService.ThrowIfCannotModify(Context.User, user);
+            await Context.Guild.RemoveBanAsync(user);
+            _banTrackerService.StopTrackingBan(Context.Guild, user.Id);
+
+            var adminPm = GetResponseEmbed($@"<:banboot:418448078031290369> Successfully unbanned the user {user.Username} from the server. This action has been logged.", Color.Green);
             await ReplyAsync(string.Empty, false, adminPm.Build());
         }
 

@@ -8,6 +8,7 @@ using MorkoBotRavenEdition.Models.Roleplay;
 
 namespace MorkoBotRavenEdition.Services.Roleplay
 {
+#if ROLEPLAY_ENABLED
     internal partial class RoleplayService
     {
         public async Task<RoleplaySession> NewSession(RoleplayMultiverse multiverse)
@@ -73,4 +74,5 @@ namespace MorkoBotRavenEdition.Services.Roleplay
             await _dbContext.SaveChangesAsync();
         }
     }
+#endif
 }

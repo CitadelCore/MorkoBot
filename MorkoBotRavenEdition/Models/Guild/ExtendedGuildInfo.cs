@@ -1,11 +1,10 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace MorkoBotRavenEdition.Models
+// Disable these; used by EF Core
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
+namespace MorkoBotRavenEdition.Models.Guild
 {
     /// <summary>
     /// Holds extended information for a Discord guild.
@@ -17,7 +16,7 @@ namespace MorkoBotRavenEdition.Models
         /// unique Guild ID assigned by Discord.
         /// </summary>
         [Key]
-        public ulong Identifier { get; set; }
+        public long Identifier { get; set; }
 
         /// <summary>
         /// Number of increments currently.

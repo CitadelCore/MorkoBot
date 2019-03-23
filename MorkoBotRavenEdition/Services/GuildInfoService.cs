@@ -3,7 +3,9 @@ using MorkoBotRavenEdition.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using static MorkoBotRavenEdition.Models.VanityRole;
+using MorkoBotRavenEdition.Models.Guild;
+using MorkoBotRavenEdition.Models.User;
+using static MorkoBotRavenEdition.Models.User.VanityRole;
 
 namespace MorkoBotRavenEdition.Services
 {
@@ -27,11 +29,11 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task<ExtendedGuildInfo> GetGuildInfo(ulong id)
         {
-            var guildInfo = _context.Guilds.FirstOrDefault(g => g.Identifier == id);
+            var guildInfo = _context.Guilds.FirstOrDefault(g => g.Identifier == (long) id);
 
             if (guildInfo != null) return guildInfo;
 
-            guildInfo = new ExtendedGuildInfo() { Identifier = id };
+            guildInfo = new ExtendedGuildInfo() { Identifier = (long) id };
             _context.Add(guildInfo);
             await _context.SaveChangesAsync();
 
@@ -52,7 +54,7 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task DeleteGuild(ulong id)
         {
-            var guildInfo = _context.Guilds.FirstOrDefault(g => g.Identifier == id);
+            var guildInfo = _context.Guilds.FirstOrDefault(g => g.Identifier == (long) id);
 
             if (guildInfo != null)
             {
@@ -60,7 +62,7 @@ namespace MorkoBotRavenEdition.Services
                 await _context.SaveChangesAsync();
             }
 
-            IEnumerable<VanityRole> roles = _context.VanityRoles.Where(r => r.Guild == id);
+            IEnumerable<VanityRole> roles = _context.VanityRoles.Where(r => r.Guild == (long) id);
 
             if (roles.Any())
                 _context.RemoveRange(roles);
@@ -68,23 +70,23 @@ namespace MorkoBotRavenEdition.Services
 
         public VanityRole GetRole(ulong id, ulong guild)
         {
-            return _context.VanityRoles.FirstOrDefault(r => r.Id == id && r.Guild == guild);
+            return _context.VanityRoles.FirstOrDefault(r => r.Id == (long) id && r.Guild == (long) guild);
         }
 
         public IEnumerable<VanityRole> GetAllRoles(ulong guild)
         {
-            return _context.VanityRoles.Where(r => r.Guild == guild);
+            return _context.VanityRoles.Where(r => r.Guild == (long) guild);
         }
 
         public async Task AddVanityRole(ulong id, ulong guild, string name, RoleRestrictionLevel level)
         {
-            _context.VanityRoles.Add(new VanityRole() { Id = id, Guild = guild, Name = name, RestrictionLevel = level });
+            _context.VanityRoles.Add(new VanityRole() { Id = (long) id, Guild = (long) guild, Name = name, RestrictionLevel = level });
             await _context.SaveChangesAsync();
         }
 
         public async Task RemoveVanityRole(ulong id, ulong guild)
         {
-            var role = _context.VanityRoles.FirstOrDefault(r => r.Id == id && r.Guild == guild);
+            var role = _context.VanityRoles.FirstOrDefault(r => r.Id == (long) id && r.Guild == (long) guild);
             if (role != null)
             {
                 _context.Remove(role);
@@ -94,7 +96,7 @@ namespace MorkoBotRavenEdition.Services
 
         public async Task UpdateVanityRole(ulong id, ulong guild, RoleRestrictionLevel level)
         {
-            var role = _context.VanityRoles.FirstOrDefault(r => r.Id == id && r.Guild == guild);
+            var role = _context.VanityRoles.FirstOrDefault(r => r.Id == (long) id && r.Guild == (long) guild);
             if (role != null)
             {
                 role.RestrictionLevel = level;

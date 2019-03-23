@@ -1,6 +1,9 @@
 ﻿using Discord;
 using Discord.Commands;
 using System;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +13,8 @@ namespace MorkoBotRavenEdition.Modules
     /// <summary>
     /// Provides useful help information about several commands.
     /// </summary>
+    [Summary("Help Module")]
+    [Description("Everything you need to know about Morko!")]
     [Group("help")]
     internal class HelpModule : MorkoModuleBase
     {
@@ -64,8 +69,12 @@ namespace MorkoBotRavenEdition.Modules
                 if (string.IsNullOrEmpty(stringBuilder.ToString()))
                     continue;
 
+                // Get the description from the attribute or summary
+                var description = module.Summary;
+                var attr = module.Attributes.FirstOrDefault(a => a.GetType() == typeof(DescriptionAttribute));
+                if (attr != null) description = ((DescriptionAttribute) attr).Description;
 
-                userPm.AddField(module.Name, stringBuilder.ToString());
+                userPm.AddField($"{module.Name} - {description}", stringBuilder.ToString());
             }
 
             await Context.User.SendMessageAsync(string.Empty, false, userPm.Build());

@@ -11,6 +11,7 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus.Core;
+using MorkoBotRavenEdition.Models.Infra;
 
 namespace MorkoBotRavenEdition.Services {
     internal class WikiService
@@ -22,18 +23,18 @@ namespace MorkoBotRavenEdition.Services {
 
         private static readonly Random Random = new Random();
 
-        public WikiService(DiscordSocketClient socketClient, UserService userService, ILogger logger)
+        public WikiService(DiscordSocketClient socketClient, UserService userService, ILoggerFactory factory)
         {
             _socketClient = socketClient;
             _userService = userService;
-            _logger = logger;
+            _logger = factory.CreateLogger("WikiLink");
             _wikiUrl = ConfigurationManager.AppSettings.Get("WikiUrl");
         }
 
         public void Start(IReceiverClient queueClient)
         {
             queueClient.RegisterMessageHandler(async (message, token) => { await HandleMessage(message); }, (exception) => { _logger.LogError(exception.Exception, @"Caught an exception from the message queue."); return Task.CompletedTask; });
-            Console.WriteLine(@"[MODULE] Wiki message bus handler registered.");
+            _logger.LogDebug(@"Wiki message bus handler registered.");
         }
 
         /// <summary>

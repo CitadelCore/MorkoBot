@@ -4,15 +4,18 @@ using MorkoBotRavenEdition.Attributes;
 using MorkoBotRavenEdition.Models;
 using MorkoBotRavenEdition.Services;
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using static MorkoBotRavenEdition.Models.VanityRole;
+using static MorkoBotRavenEdition.Models.User.VanityRole;
 
 namespace MorkoBotRavenEdition.Modules
 {
     /// <summary>
     /// Responsible for high-level guild management administrative tasks.
     /// </summary>
+    [Summary("Guild Manager")]
+    [Description("Define your server.")]
     [Group("guild")]
     internal class GuildModule : MorkoModuleBase
     {

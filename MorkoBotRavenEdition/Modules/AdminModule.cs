@@ -3,13 +3,16 @@ using Discord.Commands;
 using MorkoBotRavenEdition.Models;
 using MorkoBotRavenEdition.Services;
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using MorkoBotRavenEdition.Attributes;
+using MorkoBotRavenEdition.Models.User;
 
 namespace MorkoBotRavenEdition.Modules
 {
     [Summary(@"Server Integrity Manager")]
+    [Description("Moderate your server with style.")]
     [Group("admin")]
     internal class AdminModule : MorkoModuleBase
     {
@@ -30,7 +33,7 @@ namespace MorkoBotRavenEdition.Modules
             {
                 DaysExpiry = 30,
                 Reason = reason,
-                StaffId = Context.User.Id,
+                StaffId = (long) Context.User.Id,
             });
         }
 
@@ -124,6 +127,7 @@ namespace MorkoBotRavenEdition.Modules
             await Context.User.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Successfully set the user's coins.", Color.Green).Build());
         }
 
+        /**
         [Command("sethealth"), Summary(@"Sets the user's health. Setting the health to 0 will kill them. -1 will make them immortal.")]
         [PermitRoles]
         public async Task SetHealthAsync([Summary(@"The user to modify.")] IUser user, [Summary(@"The amount of health the user should have..")] int health)
@@ -132,6 +136,6 @@ namespace MorkoBotRavenEdition.Modules
                 throw new ArgumentOutOfRangeException(nameof(health), "Health is out of range. Health must be 0-10, or -1.");
 
             await Context.User.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Successfully set the user's health.", Color.Green).Build());
-        }
+        }*/
     }
 }

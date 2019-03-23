@@ -2,12 +2,15 @@
 using Discord.Commands;
 using MorkoBotRavenEdition.Services;
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using static MorkoBotRavenEdition.Services.ShopService;
 
 namespace MorkoBotRavenEdition.Modules
 {
+    [Summary("Shop Module")]
+    [Description("Buy shit!")]
     [Group("shop")]
     internal class ShopModule : MorkoModuleBase
     {

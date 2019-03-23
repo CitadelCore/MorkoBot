@@ -10,7 +10,9 @@ using MorkoBotRavenEdition.Services;
 using MorkoBotRavenEdition.Utilities;
 using System;
 using System.Configuration;
+using System.Threading;
 using System.Threading.Tasks;
+using MorkoBotRavenEdition.Services.Proxies;
 
 namespace MorkoBotRavenEdition
 {
@@ -21,6 +23,8 @@ namespace MorkoBotRavenEdition
     {
         private DiscordSocketClient _client;
         private CommandService _commandService;
+        private MessageRouter _router;
+        private MessageLoggerService _messageLogger;
         private IServiceProvider _serviceProvider;
 
         private ILogger _logger;
@@ -43,24 +47,12 @@ namespace MorkoBotRavenEdition
 
             Console.WriteLine(@"[PREINIT] Initializing and migrating database.");
             using (var db = new BotDbContext())
-            {
                 db.Database.Migrate();
-            }
 
             Console.WriteLine(@"[PREINIT] Database migrations completed.");
 
             _client = new DiscordSocketClient(dsc);
             _commandService = new CommandService();
-
-            // Add all modules
-            await _commandService.AddModuleAsync(typeof(AdminModule));
-            await _commandService.AddModuleAsync(typeof(GameModule));
-            await _commandService.AddModuleAsync(typeof(GuildModule));
-            await _commandService.AddModuleAsync(typeof(HelpModule));
-            await _commandService.AddModuleAsync(typeof(MapModule));
-            //await _commandService.AddModuleAsync(typeof(RoleplayModule));
-            await _commandService.AddModuleAsync(typeof(ShopModule));
-            await _commandService.AddModuleAsync(typeof(UserModule));
 
             // Start the message bus for the wiki
             Console.WriteLine(@"[PREINIT] Connecting to Azure Message Bus.");
@@ -69,31 +61,54 @@ namespace MorkoBotRavenEdition
 
             // Register all services in dependency injection container
             IServiceCollection serviceCollection = new ServiceCollection();
-            ILoggerFactory factory = new LoggerFactory();
-            factory.AddConsole();
-            factory.AddDebug();
 
-            var context = new BotDbContext();
-            var userService = new UserService(_client, context);
-            var infoService = new GuildInfoService(_client, context);
-            serviceCollection.AddSingleton(typeof(ILoggerFactory), factory);
-            serviceCollection.AddSingleton(typeof(ILogger), factory.CreateLogger("MorkoBot Audit Provider"));
-            serviceCollection.AddSingleton(typeof(BanTrackerService));
-            serviceCollection.AddSingleton(context);
             serviceCollection.AddSingleton(_client);
-            serviceCollection.AddSingleton(userService);
-            serviceCollection.AddSingleton(infoService);
+            serviceCollection.AddLogging(options =>
+            {
+                options.AddConsole();
+                options.AddDebug();
+            });
+            serviceCollection.AddSingleton<BanTrackerService>();
+            serviceCollection.AddSingleton<BotDbContext>();
+            serviceCollection.AddSingleton<UserService>();
+            serviceCollection.AddSingleton<GuildInfoService>();
+            serviceCollection.AddSingleton<MessageLoggerService>();
+            serviceCollection.AddSingleton<MessageRouter>();
+            serviceCollection.AddSingleton<UriInvokerService>();
             serviceCollection.AddSingleton(queueClient);
             serviceCollection.AddSingleton(_commandService);
             serviceCollection.AddLogging();
 
-            serviceCollection.AddSingleton(new ShopService(serviceCollection.BuildServiceProvider(), _client, context));
-            serviceCollection.AddSingleton(new WikiService(_client, userService, factory.CreateLogger("MorkoBot MessageBus Provider")));
+            serviceCollection.AddSingleton<ShopService>();
+            serviceCollection.AddSingleton<WikiService>();
 
             _serviceProvider = serviceCollection.BuildServiceProvider();
-            _logger = _serviceProvider.GetService<ILogger>();
+            _logger = _serviceProvider.GetService<ILoggerFactory>().CreateLogger("Core");
             _logger.LogInformation(@"Log provider initialized.");
 
+            // Init the message logger
+            _messageLogger = _serviceProvider.GetService<MessageLoggerService>();
+
+            // Add all modules
+            await _commandService.AddModuleAsync(typeof(AdminModule), _serviceProvider);
+            await _commandService.AddModuleAsync(typeof(GameModule), _serviceProvider);
+            await _commandService.AddModuleAsync(typeof(GuildModule), _serviceProvider);
+            await _commandService.AddModuleAsync(typeof(HelpModule), _serviceProvider);
+            await _commandService.AddModuleAsync(typeof(MapModule), _serviceProvider);
+            //await _commandService.AddModuleAsync(typeof(RoleplayModule), _serviceProvider);
+            //await _commandService.AddModuleAsync(typeof(ShopModule), _serviceProvider);
+            await _commandService.AddModuleAsync(typeof(UserModule), _serviceProvider);
+            await _commandService.AddModuleAsync(typeof(BotModule), _serviceProvider);
+
+            // Register response proxies
+            _router = _serviceProvider.GetService<MessageRouter>();
+            //_router.Register<NowoResponseProxy>();
+            _router.Register<SpecialResponseProxy>();
+
+            // Register URI routes
+            var invoker = _serviceProvider.GetService<UriInvokerService>().RegisterDefaults();
+
+            // Set up database
 #if DEBUG
             _logger.LogInformation(@"This is a debug build. Bot will run in development mode with developer account token. Local SQLite database will be used.");
             await _client.LoginAsync(TokenType.Bot, ConfigurationManager.AppSettings.Get("DevToken"));
@@ -118,7 +133,7 @@ namespace MorkoBotRavenEdition
             wikiService.Start(queueClient);
 
             // Accept input from the console
-            await PromptConsole();
+            Thread.Sleep(-1);
         }
 
         private Task Client_GuildMemberUpdated(SocketGuildUser before, SocketGuildUser after)
@@ -133,16 +148,6 @@ namespace MorkoBotRavenEdition
                 : $@"Message ID {arg1.Id} was deleted. Could not retrieve the message content because it was not found in the cache.");
 
             return Task.CompletedTask;
-        }
-
-        private async Task PromptConsole() {
-            while (true) {
-                Console.Write(@"Enter command: ");
-                var command = Console.ReadLine();
-
-                if (!string.IsNullOrEmpty(command))
-                    await _client.GetGuild(DefaultGuild).GetTextChannel(DefaultChannel).SendMessageAsync(command);
-            }
         }
 
         private Task Client_UserLeft(SocketGuildUser arg)
@@ -160,44 +165,32 @@ namespace MorkoBotRavenEdition
         private async Task Client_Ready()
         {
             await _client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await _client.SetGameAsync(@"with the Nullifactor");
+            await _client.SetGameAsync(@"with Reality");
         }
 
-        private Task Client_MessageUpdated(Cacheable<IMessage, ulong> arg1, SocketMessage arg2, ISocketMessageChannel arg3)
+        private async Task Client_MessageUpdated(Cacheable<IMessage, ulong> arg1, SocketMessage arg2, ISocketMessageChannel arg3)
         {
-            _logger.LogTrace($@"Message ID {arg2.Id} from user {arg2.Author.Id} was updated.");
-            return Task.CompletedTask;
+            // update logged here
+            await _messageLogger.LogUpdate(arg2, arg1.Id);
         }
 
         private async Task SentMessage(SocketMessage arg)
         {
-            if (!(arg is SocketUserMessage message)) return;
-            if (arg.Author.IsBot) return;
+            if (!(arg is SocketUserMessage message) || arg.Author.IsBot) return;
 
-            _logger.LogTrace($@"Recieved command with message ID {arg.Id} from user {arg.Author.Id}: {arg.Content}");
+            // log the message
+            await _messageLogger.LogSend(arg);
 
             var argPos = 0;
+            var isCommand = !(!message.HasCharPrefix('!', ref argPos) || 
+                                   message.HasMentionPrefix(_client.CurrentUser, ref argPos) ||
+                                   message.Author == _client.CurrentUser);
 
-            // S P E C I A L stuff
-            if (!(message.HasCharPrefix('!', ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos)) || message.Author == _client.CurrentUser)
-            {
-                if (message.Content.ToLower().Contains("morko") || message.Content.ToLower().Contains("mörkö"))
-                    await message.AddReactionAsync(Emote.Parse("<:morko:329887947736350720>"));
+            _router.Evaluate(_client, message, isCommand);
+            if (!isCommand) return;
 
-                if (message.Content.ToLower().Contains("raven"))
-                    await message.AddReactionAsync(Emote.Parse("<:raven:354971314877890560>"));
-
-                if (message.Content.ToLower().Contains("nullifactor"))
-                    await message.AddReactionAsync(Emote.Parse("<:5pm:423182998343516170>"));
-
-                if (message.Content.ToLower().Contains("perkele"))
-                    await message.AddReactionAsync(Emote.Parse("<:perkele:374644476800401408>"));
-
-                if (message.Content.ToLower().Contains("oh god") || message.Content.ToLower().Contains("ohgodno"))
-                    await message.AddReactionAsync(Emote.Parse("<:ohgodno:374303106961375242>"));
-
-                return;
-            }
+            // into the command handler section now
+            _logger.LogTrace($@"Recieved command with message ID {arg.Id} from user {arg.Author.Id}: {arg.Content}");
 
             var context = new CommandContext(_client, message);
             var typing = arg.Channel.EnterTypingState();
@@ -215,7 +208,7 @@ namespace MorkoBotRavenEdition
                 userPm.WithDescription(result.ErrorReason);
                 userPm.WithColor(Color.Orange);
 
-                _logger.LogWarning($@"Message ID {arg.Id} encountered an execution failure: {result.ErrorReason}");
+                _logger.LogTrace($@"Message ID {arg.Id} encountered an execution failure: {result.ErrorReason}");
                 await MessageUtilities.SendPmSafely(context.User, context.Channel, string.Empty, false, userPm.Build());
             }
             else
@@ -225,8 +218,8 @@ namespace MorkoBotRavenEdition
             }
 
             // Delete asynchronously after 2 seconds.
-            await Task.Delay(2000);
-            await message.DeleteAsync();
+            //await Task.Delay(2000);
+            //await message.DeleteAsync();
         }
 
         private Task Log(LogMessage arg)
@@ -237,7 +230,7 @@ namespace MorkoBotRavenEdition
             }
             else
             {
-                LogLevel level = LogLevel.None;
+                var level = LogLevel.None;
 
                 switch (arg.Severity)
                 {

@@ -1,17 +1,18 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
+using Newtonsoft.Json;
 
-namespace MorkoBotRavenEdition.Models
+// Disable these; used by EF Core
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
+namespace MorkoBotRavenEdition.Models.User
 {
     internal class VanityRole
     {
         [Key]
-        public ulong Id { get; set; }
-        public ulong Guild { get; set; }
+        public long Id { get; set; }
+        public long Guild { get; set; }
         public string Name { get; set; }
 
         [NotMapped]

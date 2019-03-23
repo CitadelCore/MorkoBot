@@ -7,7 +7,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MorkoBotRavenEdition.Models.Guild;
 using MorkoBotRavenEdition.Models.Roleplay;
+using MorkoBotRavenEdition.Models.Shop;
+using MorkoBotRavenEdition.Models.User;
 
 namespace MorkoBotRavenEdition.Services
 {
@@ -18,6 +21,7 @@ namespace MorkoBotRavenEdition.Services
         public DbSet<ExtendedGuildInfo> Guilds { get; set; }
         public DbSet<VanityRole> VanityRoles { get; set; }
         public DbSet<UserItem> UserItems { get; set; }
+        public DbSet<LoggedMessage> LoggedMessages { get; set; }
 
 #if ROLEPLAY_ENABLED
         // Roleplay
@@ -32,12 +36,11 @@ namespace MorkoBotRavenEdition.Services
         {
 #if DEBUG
             // Use temporary development database
-            //optionsBuilder.UseSqlServer(ConfigurationManager.ConnectionStrings["MorkoDev"].ConnectionString);
-            optionsBuilder.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=MorkoBot.Database;Trusted_Connection=True;MultipleActiveResultSets=true");
+            optionsBuilder.UseMySql(ConfigurationManager.ConnectionStrings["MorkoDev"].ConnectionString);
 #else
             // Use production SQL server database
-            //optionsBuilder.UseSqlServer(ConfigurationManager.ConnectionStrings["MorkoBot"].ConnectionString);
-            optionsBuilder.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=MorkoBot.Database;Trusted_Connection=True;MultipleActiveResultSets=true");
+            optionsBuilder.UseMySql(ConfigurationManager.ConnectionStrings["MorkoBot"].ConnectionString);
+            //optionsBuilder.UseSqlServer(@"Server=(localdb)\mssqllocaldb;Database=MorkoBot.Database;Trusted_Connection=True;MultipleActiveResultSets=true");
 #endif
         }
     }

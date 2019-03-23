@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using MorkoBotRavenEdition.Models.Shop;
 using static MorkoBotRavenEdition.Services.ShopService;
 
 namespace MorkoBotRavenEdition.Utilities

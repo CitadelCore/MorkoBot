@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Configuration;
+using MorkoBotRavenEdition.Models.User;
 
 namespace MorkoBotRavenEdition.Services
 {
@@ -29,11 +30,11 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task<UserProfile> GetProfile(ulong id, ulong guild)
         {
-            var profile = _context.UserProfiles.FirstOrDefault(u => u.Identifier == id && u.GuildIdentifier == guild);
+            var profile = _context.UserProfiles.FirstOrDefault(u => u.Identifier == (long) id && u.GuildIdentifier == (long) guild);
 
             if (profile != null) return profile;
 
-            profile = new UserProfile { Identifier = id, GuildIdentifier = guild, LastIncremented = DateTime.Now - TimeSpan.FromHours(1) };
+            profile = new UserProfile { Identifier = (long) id, GuildIdentifier = (long) guild, LastIncremented = DateTime.Now - TimeSpan.FromHours(1) };
             _context.Add(profile);
             await _context.SaveChangesAsync();
 
@@ -54,7 +55,7 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         public async Task DeleteProfile(ulong id, ulong guild)
         {
-            var profile = _context.UserProfiles.SingleOrDefault(u => u.Identifier == id && u.GuildIdentifier == guild);
+            var profile = _context.UserProfiles.SingleOrDefault(u => u.Identifier == (long) id && u.GuildIdentifier == (long) guild);
 
             _context.Remove(profile ?? throw new InvalidOperationException());
             await _context.SaveChangesAsync();
@@ -62,11 +63,11 @@ namespace MorkoBotRavenEdition.Services
 
         public async Task AddWarning(UserProfile profile, UserWarning warning)
         {
-            var guild = _client.GetGuild(profile.GuildIdentifier);
+            var guild = _client.GetGuild((ulong) profile.GuildIdentifier);
 
             warning.UserId = profile.Identifier;
             warning.TimeAdded = DateTime.Now;
-            warning.GuildIdentifier = guild.Id;
+            warning.GuildIdentifier = (long) guild.Id;
             _context.Add(warning);
 
             await _context.SaveChangesAsync();
@@ -79,12 +80,12 @@ namespace MorkoBotRavenEdition.Services
 
             var adminEmbed = new EmbedBuilder();
             adminEmbed.WithTitle(@"Server Integrity Manager");
-            adminEmbed.WithDescription($"The staff member {guild.GetUser(warning.StaffId).Username} has registered a warning for the user {guild.GetUser(warning.UserId).Username} with the reason \"{warning.Reason}\"");
+            adminEmbed.WithDescription($"The staff member {guild.GetUser((ulong)warning.StaffId).Username} has registered a warning for the user {guild.GetUser((ulong)warning.UserId).Username} with the reason \"{warning.Reason}\"");
             adminEmbed.WithFooter($@"Expires in {warning.DaysExpiry} days.");
             adminEmbed.WithColor(Color.Red);
 
             // Attempt to notify the user
-            await MessageUtilities.SendPmSafely(_client.GetUser(profile.Identifier), null, string.Empty, false, embed.Build());
+            await MessageUtilities.SendPmSafely(_client.GetUser((ulong)profile.Identifier), null, string.Empty, false, embed.Build());
 
             // Notify the staff channel
 
@@ -145,7 +146,7 @@ namespace MorkoBotRavenEdition.Services
             embed.AddField("<:geocache:357917503894061059> Current Level", $@"Level {profile.ExperienceLevels}", true);
 
             // Attempt to notify the user
-            await MessageUtilities.SendPmSafely(_client.GetUser(profile.Identifier), null, string.Empty, false, embed.Build());
+            await MessageUtilities.SendPmSafely(_client.GetUser((ulong)profile.Identifier), null, string.Empty, false, embed.Build());
         }
 
         /// <summary>
@@ -166,14 +167,14 @@ namespace MorkoBotRavenEdition.Services
                 {
                     embed2.WithTitle("Oh perkele, you've lost health!");
                     embed2.WithColor(Color.Orange);
-                    await MessageUtilities.SendPmSafely(_client.GetUser(profile.Identifier), null, string.Empty, false, embed2.Build());
+                    await MessageUtilities.SendPmSafely(_client.GetUser((ulong)profile.Identifier), null, string.Empty, false, embed2.Build());
                 }
 
                 if (health > profile.Health)
                 {
                     embed2.WithTitle("Awesome, you've been healed!");
                     embed2.WithColor(Color.Green);
-                    await MessageUtilities.SendPmSafely(_client.GetUser(profile.Identifier), null, string.Empty, false, embed2.Build());
+                    await MessageUtilities.SendPmSafely(_client.GetUser((ulong)profile.Identifier), null, string.Empty, false, embed2.Build());
                 }
 
                 profile.Health = health;
@@ -192,7 +193,7 @@ namespace MorkoBotRavenEdition.Services
             embed.WithColor(Color.Orange);
 
             // Attempt to notify the user
-            await MessageUtilities.SendPmSafely(_client.GetUser(profile.Identifier), null, string.Empty, false, embed.Build());
+            await MessageUtilities.SendPmSafely(_client.GetUser((ulong)profile.Identifier), null, string.Empty, false, embed.Build());
         }
 
         /// <summary>

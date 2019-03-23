@@ -5,12 +5,14 @@ using MorkoBotRavenEdition.Services;
 using MorkoBotRavenEdition.Utilities;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MorkoBotRavenEdition.Modules
 {
     [Summary("Game Module")]
+    [Description("Fun commands to relieve the tedium!")]
     [Group("game")]
     internal class GameModule : MorkoModuleBase
     {
@@ -54,7 +56,7 @@ namespace MorkoBotRavenEdition.Modules
         [Command("nullifact"), Summary(@"Nullifacts a user. Use with caution.")]
         public async Task NullifactAsync([Summary(@"The user to nullifact.")] IUser user)
         {
-            await Context.Channel.SendMessageAsync("{user.Mention}, prepare for nullifaction. <:5pm:423182998343516170>\nVerdict has been authenticated and will be executed now.");
+            await Context.Channel.SendMessageAsync($"{user.Mention}, prepare for nullifaction. <:5pm:423182998343516170>\nVerdict has been authenticated and will be executed now.");
             await Task.Delay(2000);
 
             // Send the video payload

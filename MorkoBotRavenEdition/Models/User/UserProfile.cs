@@ -1,22 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MorkoBotRavenEdition.Models
+// Disable these; used by EF Core
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
+namespace MorkoBotRavenEdition.Models.User
 {
     internal class UserProfile
     {
         [Key]
-        public ulong Identifier { get; set; }
-        public ulong GuildIdentifier { get; set; }
-        public int OpenSewerTokens { get; set; } = 0;
-        public int Experience { get; set; } = 0;
+        public long Identifier { get; set; }
+        public long GuildIdentifier { get; set; }
+        public int OpenSewerTokens { get; set; }
+        public int Experience { get; set; }
         public int ExperienceTarget { get; set; } = 10;
-        public int ExperienceLevels { get; set; } = 0;
-        public int IncrementCount { get; set; } = 0;
+        public int ExperienceLevels { get; set; }
+        public int IncrementCount { get; set; }
         public DateTime LastIncremented { get; set; }
 
         // Basis for new Health system

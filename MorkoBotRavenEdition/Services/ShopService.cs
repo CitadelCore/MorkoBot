@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using MorkoBotRavenEdition.Models.Shop;
+using MorkoBotRavenEdition.Models.User;
 using MorkoBotRavenEdition.Utilities;
 
 namespace MorkoBotRavenEdition.Services

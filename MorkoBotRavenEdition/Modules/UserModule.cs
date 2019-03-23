@@ -3,14 +3,17 @@ using Discord.Commands;
 using Discord.WebSocket;
 using MorkoBotRavenEdition.Services;
 using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using static MorkoBotRavenEdition.Models.VanityRole;
+using static MorkoBotRavenEdition.Models.User.VanityRole;
 
 namespace MorkoBotRavenEdition.Modules
 {
+    [Summary("User Module")]
+    [Description("Manage your server's users!")]
     [Group("user")]
     internal class UserModule : MorkoModuleBase
     {
@@ -155,7 +158,7 @@ namespace MorkoBotRavenEdition.Modules
 
             userPm.AddField("<:olut:329889326051753986> Experience", $@"{profile.Experience}/{profile.ExperienceTarget} XP", true);
             userPm.AddField("<:geocache:357917503894061059> Current Level", $@"Level {profile.ExperienceLevels}", true);
-            userPm.AddField("<:eeg:359363156885110794> Health", $@"{profile.Health}/10 HP", true);
+            //userPm.AddField("<:eeg:359363156885110794> Health", $@"{profile.Health}/10 HP", true);
             userPm.AddField("<:sewercoin:354606163112755230> Sewer Coins", $@"{profile.OpenSewerTokens} OC", true);
 
             // Administrative information
@@ -163,12 +166,12 @@ namespace MorkoBotRavenEdition.Modules
             {
                 var warnings = _userService.GetWarnings(profile);
                 var userWarnings = warnings.ToList();
-                var active = userWarnings.Select(w => (w.TimeAdded + TimeSpan.FromDays(w.DaysExpiry) > DateTime.Now)).Count();
+                var active = userWarnings.Select(w => w.TimeAdded <= DateTime.Now + TimeSpan.FromDays(w.DaysExpiry)).Count();
 
                 userPm.AddField(@":warning: Active warnings", active);
                 if (isAdmin)
                 {
-                    var expired = userWarnings.Select(w => (w.TimeAdded + TimeSpan.FromDays(w.DaysExpiry) <= DateTime.Now)).Count();
+                    var expired = userWarnings.Select(w => w.TimeAdded > DateTime.Now + TimeSpan.FromDays(w.DaysExpiry)).Count();
                     userPm.AddField(@":clock3: Expired warnings", expired);
                 }
                 else
@@ -242,7 +245,7 @@ namespace MorkoBotRavenEdition.Modules
 
                 if (isStaff)
                 {
-                    userPm.AddField(@"Staff member", (await Context.Guild.GetUserAsync(warning.StaffId)).Username);
+                    userPm.AddField(@"Staff member", (await Context.Guild.GetUserAsync((ulong) warning.StaffId)).Username);
                     userPm.AddField(@"Date added", warning.TimeAdded);
                     userPm.AddField(@"Warning length", $@"{warning.DaysExpiry} days");
                 }

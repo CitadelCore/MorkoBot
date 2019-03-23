@@ -2,6 +2,7 @@
 using Discord.Commands;
 using MorkoBotRavenEdition.Services;
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using MorkoBotRavenEdition.Attributes;
@@ -9,6 +10,8 @@ using MorkoBotRavenEdition.Attributes;
 namespace MorkoBotRavenEdition.Modules
 {
     [InfraExclusive]
+    [Summary("INFRA Map Module")]
+    [Description("Get information about INFRA maps!")]
     [Group("map")]
     internal class MapModule : MorkoModuleBase
     {

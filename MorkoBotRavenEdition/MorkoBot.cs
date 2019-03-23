@@ -106,7 +106,7 @@ namespace MorkoBotRavenEdition
             _router.Register<SpecialResponseProxy>();
 
             // Register URI routes
-            var invoker = _serviceProvider.GetService<UriInvokerService>().RegisterDefaults();
+            //var invoker = _serviceProvider.GetService<UriInvokerService>().RegisterDefaults();
 
             // Set up database
 #if DEBUG

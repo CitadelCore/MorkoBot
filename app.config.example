@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+  <connectionStrings>
+    <add name="MorkoBot" connectionString="server=localhost;port=3306;database=morkobot;user=morkobot;password=foobar" />
+    <add name="MorkoDev" connectionString="server=localhost;port=3306;database=morkobot;user=morkobot;password=foobar" />
+  </connectionStrings>
+  <appSettings>
+    <add key="BotToken" value="foobar" />
+    <add key="DevToken" value="foobar" />
+    <add key="WikiConnectionString" value="Endpoint=sb://foobar.servicebus.windows.net/;SharedAccessKeyName=MorkoBotListenPolicy;SharedAccessKey=foobar" />
+    <add key="WikiUrl" value="https://stalburg.arctar.us" />
+    <add key="DefaultChannelId" value="foobar" />
+    <add key="DefaultGuildId" value="foobar" />
+    <add key="WikiChannelId" value="foobar" />
+    <add key="StaffChannelId" value="foobar" />
+  </appSettings>
+</configuration>

@@ -20,7 +20,7 @@ namespace MorkoBotRavenEdition.Services.Proxies
             _context = context;
         }
 
-        internal override async Task Run(DiscordSocketClient client, SocketUserMessage message)
+        internal override async Task Run(IDiscordClient client, IUserMessage message)
         {
             if (message.Channel.Id != COMPETITION_CHANNEL_ID) return;
 
@@ -52,7 +52,7 @@ namespace MorkoBotRavenEdition.Services.Proxies
             await _context.SaveChangesAsync();
         }
 
-        private async Task<bool> CanSubmitAsync(SocketUser user)
+        private async Task<bool> CanSubmitAsync(IUser user)
         {
             // TODO: Ensure entries aren't closed
 

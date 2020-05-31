@@ -12,7 +12,7 @@ namespace MorkoBotRavenEdition.Models.Roleplay
     internal class RoleplaySessionParticipant
     {
         [Key]
-        public int ParticipantId { get; set; }
+        public int Id { get; set; }
         public int CharacterId { get; set; }
         public int SessionId { get; set; }
     }

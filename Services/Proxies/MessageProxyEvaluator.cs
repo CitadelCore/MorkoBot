@@ -2,21 +2,21 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using Discord.WebSocket;
+using Discord;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using static MorkoBotRavenEdition.Services.Proxies.ResponseProxy;
 
 namespace MorkoBotRavenEdition.Services.Proxies
 {
-    internal class MessageRouter
+    internal class MessageProxyEvaluator
     {
         private readonly IList<ResponseProxy> _proxies = new List<ResponseProxy>();
         private readonly ILogger _logger;
 
-        public MessageRouter(IServiceProvider provider)
+        public MessageProxyEvaluator(IServiceProvider provider)
         {
-            _logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(MessageRouter));
+            _logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(MessageProxyEvaluator));
             foreach (var proxy in provider.GetServices<ResponseProxy>()) Register(proxy);
         }
 
@@ -26,7 +26,7 @@ namespace MorkoBotRavenEdition.Services.Proxies
             _proxies.Add(proxy);
         }
 
-        internal async void Evaluate(DiscordSocketClient client, SocketUserMessage message, bool isCommand)
+        internal async void Evaluate(IDiscordClient client, IUserMessage message, bool isCommand)
         {
             foreach (var proxy in _proxies)
             {

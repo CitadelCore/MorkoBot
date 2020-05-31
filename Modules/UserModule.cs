@@ -14,7 +14,6 @@ namespace MorkoBotRavenEdition.Modules
 {
     [Summary("User Module")]
     [Description("Manage your server's users!")]
-    [Group("user")]
     internal class UserModule : ModuleBase
     {
         private readonly UserService _userService;
@@ -80,7 +79,7 @@ namespace MorkoBotRavenEdition.Modules
 
             if (vrole == null)
             {
-                await Context.User.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Error: The role does not exist.", Color.Orange).Build());
+                await SendStatusAsync(@"Error: The role does not exist.", Color.Orange);
                 return;
             }
 
@@ -123,7 +122,7 @@ namespace MorkoBotRavenEdition.Modules
             userPm.AddField(@"Roles", roleBuilder.ToString());
             userPm.WithColor(Color.Green);
 
-            await Context.User.SendMessageAsync(string.Empty, false, userPm.Build());
+            await ReplyAsync(string.Empty, false, userPm.Build());
         }
 
         [Command("whois"), Summary(@"Retrieves information about yourself or the specified user. More information is returned depending on your privilege level.")]
@@ -163,12 +162,12 @@ namespace MorkoBotRavenEdition.Modules
             {
                 var warnings = _userService.GetWarnings(profile);
                 var userWarnings = warnings.ToList();
-                var active = userWarnings.Select(w => w.TimeAdded <= DateTime.Now + TimeSpan.FromDays(w.DaysExpiry)).Count();
+                var active = userWarnings.Select(w => w.TimeAdded <= (DateTime.Now + TimeSpan.FromDays(w.DaysExpiry))).Count();
 
                 userPm.AddField(@":warning: Active warnings", active);
                 if (isAdmin)
                 {
-                    var expired = userWarnings.Select(w => w.TimeAdded > DateTime.Now + TimeSpan.FromDays(w.DaysExpiry)).Count();
+                    var expired = userWarnings.Select(w => w.TimeAdded > (DateTime.Now + TimeSpan.FromDays(w.DaysExpiry))).Count();
                     userPm.AddField(@":clock3: Expired warnings", expired);
                 }
                 else
@@ -177,7 +176,7 @@ namespace MorkoBotRavenEdition.Modules
                 }
             }
 
-            await Context.User.SendMessageAsync(string.Empty, false, userPm.Build());
+            await ReplyAsync(string.Empty, false, userPm.Build());
         }
 
         [Command("warnings"), Summary(@"Retrieves a list of warnings on a user, or yourself.")]
@@ -191,7 +190,7 @@ namespace MorkoBotRavenEdition.Modules
 
             if (user != Context.User)
             {
-                await UserService.ThrowIfHasNoPermissions(Context, ServiceProvider, "Discord Moderator");
+                await UserService.ThrowIfHasNoPermissions(Context, ServiceProvider, "Moderator");
                 await _userService.ThrowIfCannotModify(Context.User, user);
 
                 isStaff = true;
@@ -199,7 +198,7 @@ namespace MorkoBotRavenEdition.Modules
 
             // Return individual warning data.
             var profile = await _userService.GetProfile(user.Id, Context.Guild.Id);
-            var isAdmin = await UserService.DoesUserHaveAnyRole(Context, ServiceProvider, "Discord Admin");
+            var isAdmin = await UserService.DoesUserHaveAnyRole(Context, ServiceProvider, "Administrator");
 
             // Allow admins to view their own warnings.
             if (isAdmin)
@@ -210,7 +209,7 @@ namespace MorkoBotRavenEdition.Modules
             var userWarnings = warnings.ToList();
             if (!userWarnings.Any())
             {
-                await Context.User.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"No warnings are registered on this user.", Color.Orange).Build());
+                await SendStatusAsync(@"No warnings are registered on this user.", Color.Orange);
                 return;
             }
 
@@ -222,7 +221,7 @@ namespace MorkoBotRavenEdition.Modules
             userPm.WithColor(Color.Green);
             userPm.WithThumbnailUrl(guildUser.GetAvatarUrl());
 
-            await Context.User.SendMessageAsync(string.Empty, false, userPm.Build());
+            await ReplyAsync(string.Empty, false, userPm.Build());
 
             foreach (var warning in userWarnings)
             {
@@ -247,7 +246,7 @@ namespace MorkoBotRavenEdition.Modules
                     userPm.AddField(@"Warning length", $@"{warning.DaysExpiry} days");
                 }
 
-                await Context.User.SendMessageAsync(string.Empty, false, userPm.Build());
+                await ReplyAsync(string.Empty, false, userPm.Build());
             }
         }
     }

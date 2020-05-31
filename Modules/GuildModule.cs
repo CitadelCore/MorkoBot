@@ -3,9 +3,14 @@ using Discord.Commands;
 using MorkoBotRavenEdition.Attributes;
 using MorkoBotRavenEdition.Models;
 using MorkoBotRavenEdition.Services;
+using MorkoBotRavenEdition.Models.Guild;
+using MorkoBotRavenEdition.Models.Tasks;
 using System;
+using System.Diagnostics;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using System.Threading;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using static MorkoBotRavenEdition.Models.User.VanityRole;
 
@@ -21,6 +26,7 @@ namespace MorkoBotRavenEdition.Modules
     {
         private readonly GuildInfoService _infoService;
         private readonly MessageLoggerService _loggerService;
+
         public GuildModule(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _infoService = serviceProvider.GetService<GuildInfoService>();
@@ -40,12 +46,12 @@ namespace MorkoBotRavenEdition.Modules
             // Check for existing roles
             if (vrole != null)
             {
-                await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Error: The role already exists. Delete it, or use !guild updaterole to update it.", Color.Orange).Build());
+                await SendStatusAsync(@"Error: The role already exists. Delete it, or use !guild updaterole to update it.", Color.Orange);
                 return;
             }
 
             await _infoService.AddVanityRole(role.Id, Context.Guild.Id, role.Name, restrictionLevel);
-            await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed($"Successfully added the role \"{role}\".", Color.Green).Build());
+            await SendStatusAsync($"Successfully added the role \"{role}\".", Color.Green);
         }
 
         [Command("removerole"), Summary(@"Removes a user/vanity role from the server role list.")]
@@ -55,12 +61,12 @@ namespace MorkoBotRavenEdition.Modules
             // Ensure role exists
             if (_infoService.GetRole(role.Id, Context.Guild.Id) == null)
             {
-                await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Error: The role does not exist.", Color.Orange).Build());
+                await SendStatusAsync(@"Error: The role does not exist.", Color.Orange);
                 return;
             }
 
             await _infoService.RemoveVanityRole(role.Id, Context.Guild.Id);
-            await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed($"Successfully removed the role \"{role}\".", Color.Green).Build());
+            await SendStatusAsync($"Successfully removed the role \"{role}\".", Color.Green);
         }
 
         [Command("updaterole"), Summary(@"Updates a user/vanity role with a new restriction level.")]
@@ -70,28 +76,34 @@ namespace MorkoBotRavenEdition.Modules
             // Ensure role exists
             if (_infoService.GetRole(role.Id, Context.Guild.Id) == null)
             {
-                await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Error: The role does not exist.", Color.Orange).Build());
+                await SendStatusAsync(@"Error: The role does not exist.", Color.Orange);
                 return;
             }
 
             await _infoService.UpdateVanityRole(role.Id, Context.Guild.Id, restrictionLevel);
-            await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed($"Successfully updated the role \"{role}\".", Color.Green).Build());
+            await SendStatusAsync($"Successfully updated the role \"{role}\".", Color.Green);
         }
 
         [Command("logexport"), Summary(@"Exports chat logs for a specified channel and date.")]
         [PermitRoles]
-        public async Task LogExportAsync(ITextChannel channel, DateTime? start = null, DateTime? end = null)
+        public async Task LogExportAsync(ITextChannel channel = null, DateTime? start = null, DateTime? end = null)
         {
-            if (start == null) start = DateTime.Now;
-            if (end == null) end = DateTime.Now;
+            var channelId = channel != null ? (long?)channel.Id : null;
 
-            var export = await _loggerService.LogExportAsync(Context.Client, (long)Context.Guild.Id, (long)channel.Id, start.Value, end.Value);
+            var export = await _loggerService.LogExportAsync(Context.Client, (long)Context.Guild.Id, channelId, start, end);
             if (export == null) {
-                await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Export failed. Please contact a developer.", Color.Red).Build());
+                await SendStatusAsync(@"Export failed. Please contact a developer.", Color.Red);
                 return;
             }
 
-            await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed(@$"Export success! Link: {export}", Color.Green).Build());
+            await SendStatusAsync($@"Export success! Link: {export}", Color.Green);
+        }
+
+        [Command("logbackfill"), Summary(@"Backfills the entire message history of a server into MorkoBot's message cache.")]
+        [PermitOwner]
+        public async Task LogBackfillAsync() {
+            _loggerService.RunBackfill(Context);
+            await SendStatusAsync(@"Backfill job started; this may take a while, so please wait.", Color.Green);
         }
     }
 }

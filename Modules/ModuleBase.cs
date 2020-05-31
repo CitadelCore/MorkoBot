@@ -2,10 +2,12 @@
 using Discord.Commands;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
+using MorkoBotRavenEdition.Utilities;
 
 namespace MorkoBotRavenEdition.Modules
 {
-    internal class ModuleBase : ModuleBase<CommandContext>
+    internal class ModuleBase : ModuleBase<ICommandContext>
     {
         protected readonly IServiceProvider ServiceProvider;
 
@@ -32,6 +34,16 @@ namespace MorkoBotRavenEdition.Modules
             };
 
             return builder;
+        }
+
+        protected async Task SendStatusAsync(string info, Color? color = null, IMessageChannel channel = null) {
+            if (channel == null) channel = Context.Channel;
+            var title = "Module";
+
+            if (GetType().GetCustomAttributes(typeof(SummaryAttribute), true).FirstOrDefault() is SummaryAttribute summaryAttribute)
+                title = summaryAttribute.Text;
+
+            await channel.SendStatusAsync(title, info, color);
         }
     }
 }

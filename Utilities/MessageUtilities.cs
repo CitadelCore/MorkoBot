@@ -9,6 +9,8 @@ namespace MorkoBotRavenEdition.Utilities
 {
     internal class MessageUtilities
     {
+        private static Random random = new Random();
+
         /// <summary>
         /// Sends a PM (private message) to a user safely.
         /// This is because an error will occur if the user has PMs disabled for non-friends,
@@ -25,6 +27,14 @@ namespace MorkoBotRavenEdition.Utilities
                 if (fallback != null)
                     await fallback.SendMessageAsync(text, isTts, embed, options);
             }
+        }
+
+        public static long RandomMessageId() {
+            byte[] buf = new byte[8];
+            random.NextBytes(buf);
+            long longRand = BitConverter.ToInt64(buf, 0);
+
+            return Math.Abs(longRand);
         }
     }
 }

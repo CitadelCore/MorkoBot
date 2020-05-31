@@ -1,16 +1,13 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using HtmlAgilityPack;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Logging;
-using MorkoBotRavenEdition.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus.Core;
 using MorkoBotRavenEdition.Models.Infra;
 
 namespace MorkoBotRavenEdition.Services {
@@ -31,51 +28,51 @@ namespace MorkoBotRavenEdition.Services {
             _wikiUrl = ConfigurationManager.AppSettings.Get("WikiUrl");
         }
 
-        public void Start(IReceiverClient queueClient)
-        {
-            queueClient.RegisterMessageHandler(async (message, token) => { await HandleMessage(message); }, (exception) => { _logger.LogError(exception.Exception, @"Caught an exception from the message queue."); return Task.CompletedTask; });
-            _logger.LogDebug(@"Wiki message bus handler registered.");
-        }
+        // public void Start(IReceiverClient queueClient)
+        // {
+        //     queueClient.RegisterMessageHandler(async (message, token) => { await HandleMessage(message); }, (exception) => { _logger.LogError(exception.Exception, @"Caught an exception from the message queue."); return Task.CompletedTask; });
+        //     _logger.LogDebug(@"Wiki message bus handler registered.");
+        // }
 
         /// <summary>
         /// Handles a message recieved from the wiki service bus.
         /// </summary>
-        private async Task HandleMessage(Message message)
-        {
-            var guild = _socketClient.GetGuild(MorkoBot.DefaultGuild);
-            if (guild == null)
-                return;
+        // private async Task HandleMessage(Message message)
+        // {
+        //     var guild = _socketClient.GetGuild(MorkoBot.DefaultGuild);
+        //     if (guild == null)
+        //         return;
 
-            var user = new List<SocketGuildUser>(guild.Users)
-                .Find(c => c.Username == (string)message.UserProperties["username"]);
+        //     var user = new List<SocketGuildUser>(guild.Users)
+        //         .Find(c => c.Username == (string)message.UserProperties["username"]);
 
-            if (user == null) return;
-            if (!message.UserProperties.ContainsKey("isMinor"))
-            {
-                var profile = await _userService.GetProfile(user.Id, guild.Id);
-                var xpEarned = Random.Next(25, 50);
-                var ocEarned = Random.Next(1, 5);
+        //     if (user == null) return;
+        //     if (!message.UserProperties.ContainsKey("isMinor"))
+        //     {
+        //         var profile = await _userService.GetProfile(user.Id, guild.Id);
+        //         var xpEarned = Random.Next(25, 50);
+        //         var ocEarned = Random.Next(1, 5);
 
-                await _userService.AddExperience(profile, xpEarned);
+        //         await _userService.AddExperience(profile, xpEarned);
 
-                profile.OpenSewerTokens += ocEarned;
-                await _userService.SaveProfile(profile);
+        //         profile.OpenSewerTokens += ocEarned;
+        //         await _userService.SaveProfile(profile);
 
-                var builder = new EmbedBuilder();
-                builder.WithTitle(@"Wiki Contribution");
-                builder.WithDescription($@"{user.Username} has made a contribution to the Stalburg Wiki, and earned {xpEarned} <:olut:329889326051753986> XP and {ocEarned} <:sewercoin:354606163112755230> OC!");
-                if (message.UserProperties.ContainsKey("summary") && !string.IsNullOrWhiteSpace((string)message.UserProperties["summary"]))
-                    builder.AddField(@"Summary", message.UserProperties["summary"]);
+        //         var builder = new EmbedBuilder();
+        //         builder.WithTitle(@"Wiki Contribution");
+        //         builder.WithDescription($@"{user.Username} has made a contribution to the Stalburg Wiki, and earned {xpEarned} <:olut:329889326051753986> XP and {ocEarned} <:sewercoin:354606163112755230> OC!");
+        //         if (message.UserProperties.ContainsKey("summary") && !string.IsNullOrWhiteSpace((string)message.UserProperties["summary"]))
+        //             builder.AddField(@"Summary", message.UserProperties["summary"]);
 
-                //builder2.AddField("Characters added", "+" + size.ToString());
-                builder.WithColor(Color.Green);
-                builder.WithUrl((string)message.UserProperties["url"]);
-                builder.WithAuthor(user);
+        //         //builder2.AddField("Characters added", "+" + size.ToString());
+        //         builder.WithColor(Color.Green);
+        //         builder.WithUrl((string)message.UserProperties["url"]);
+        //         builder.WithAuthor(user);
 
-                var channel = (SocketTextChannel) guild.GetChannel(Convert.ToUInt64(ConfigurationManager.AppSettings.Get("WikiChannelId")));
-                await channel.SendMessageAsync("", false, builder.Build());
-            }
-        }
+        //         var channel = (SocketTextChannel) guild.GetChannel(Convert.ToUInt64(ConfigurationManager.AppSettings.Get("WikiChannelId")));
+        //         await channel.SendMessageAsync("", false, builder.Build());
+        //     }
+        // }
 
         /// <summary>
         /// Returns a map information object from the specified map name.

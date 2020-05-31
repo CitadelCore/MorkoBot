@@ -13,7 +13,6 @@ namespace MorkoBotRavenEdition.Modules
 {
     [Summary("Game Module")]
     [Description("Fun commands to relieve the tedium!")]
-    [Group("game")]
     internal class GameModule : ModuleBase
     {
         private static readonly Random Random = new Random();

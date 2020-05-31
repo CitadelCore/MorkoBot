@@ -1,6 +1,6 @@
 ﻿using Discord;
 using Discord.Commands;
-using MorkoBotRavenEdition.Models;
+using MorkoBotRavenEdition.Models.Discord;
 using MorkoBotRavenEdition.Services;
 using System;
 using System.ComponentModel;
@@ -13,15 +13,16 @@ namespace MorkoBotRavenEdition.Modules
 {
     [Summary(@"Server Integrity Manager")]
     [Description("Moderate your server with style.")]
-    [Group("admin")]
     internal class AdminModule : ModuleBase
     {
         private readonly UserService _userService;
         private readonly BanTrackerService _banTrackerService;
+        private readonly CommandService _commandService;
         public AdminModule(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _userService = serviceProvider.GetService<UserService>();
             _banTrackerService = serviceProvider.GetService<BanTrackerService>();
+            _commandService = serviceProvider.GetService<CommandService>();
         }
 
         [Command("warn"), Summary(@"Submits a disciplinary warning to a user's profile.")]
@@ -127,15 +128,56 @@ namespace MorkoBotRavenEdition.Modules
             await Context.User.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Successfully set the user's coins.", Color.Green).Build());
         }
 
-        /**
-        [Command("sethealth"), Summary(@"Sets the user's health. Setting the health to 0 will kill them. -1 will make them immortal.")]
+        [Command("sudo"), Summary(@"Runs a command as another user.")]
         [PermitRoles]
-        public async Task SetHealthAsync([Summary(@"The user to modify.")] IUser user, [Summary(@"The amount of health the user should have..")] int health)
-        {
-            if (health != -1 && (health < 0 || health > 10))
-                throw new ArgumentOutOfRangeException(nameof(health), "Health is out of range. Health must be 0-10, or -1.");
+        public async Task SudoAsync([Summary(@"The user to run the command as.")] IUser user, [Summary(@"The command to run.")] string command) {
+            if (user == null || !command.StartsWith('!')) {
+                await SendStatusAsync("Invalid syntax.", Color.Orange);
+                return;
+            }
 
-            await Context.User.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Successfully set the user's health.", Color.Green).Build());
-        }*/
+            await _userService.ThrowIfCannotModify(Context.User, user, true);
+
+            // fake the user's message
+            var fake = new FakeUserMessage(Context.Channel, user, command);
+            var ctx = new SudoCommandContext(Context, user, fake);
+
+            int argPos = 0;
+            fake.HasCharPrefix('!', ref argPos);
+            fake.HasMentionPrefix(Context.Client.CurrentUser, ref argPos);
+
+            var result = await _commandService.ExecuteAsync(ctx, argPos, ServiceProvider);
+            if (!result.IsSuccess)
+            {
+                var userPm = new EmbedBuilder();
+                userPm.WithFooter($"Impersonating {user.Username}#{user.Discriminator}");
+
+                switch(result.Error) {
+                    case CommandError.Exception:
+                        if (result is ExecuteResult exec) {
+                            var errorId = Guid.NewGuid();
+
+                            var errStr = $@"eID Ref# {errorId}";
+
+                            // TODO: oof, this overwrites impersonation info
+                            userPm.WithFooter(errStr);
+                            //_logger.LogError(errStr);
+                            //_logger.LogError(exec.Exception.ToString());
+                        }
+
+                        userPm.WithTitle(@"Internal Exception");
+                        userPm.WithDescription("Please check server logs for a stack trace.");
+                        userPm.WithColor(Color.Red);
+                        break;
+                    default:
+                        userPm.WithTitle(@"Command failure");
+                        userPm.WithDescription(result.ErrorReason);
+                        userPm.WithColor(Color.Orange);
+                        break;
+                }
+                
+                await Context.Channel.SendMessageAsync(string.Empty, false, userPm.Build());
+            }
+        }
     }
 }

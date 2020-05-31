@@ -13,7 +13,7 @@ namespace MorkoBotRavenEdition.Models.Roleplay
     {
         // Reality info
         [Key]
-        public int RealityId { get; set; }
+        public int Id { get; set; }
         public int MultiverseId { get; set; }
         public RoleplayMultiverse Multiverse { get; set; }
 

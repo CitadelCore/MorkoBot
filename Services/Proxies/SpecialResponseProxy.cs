@@ -16,10 +16,10 @@ namespace MorkoBotRavenEdition.Services.Proxies
             ProxyType = ResponseProxyType.MessageOnly;
         }
 
-        internal override async Task Run(DiscordSocketClient client, SocketUserMessage message)
+        internal override async Task Run(IDiscordClient client, IUserMessage message)
         {
             // these will only work on prod Loiste server
-            if (((SocketGuildChannel) message.Channel).Guild.Id != GuildConstants.LOISTE_PROD) return;
+            if (((IGuildChannel) message.Channel).Guild.Id != GuildConstants.LOISTE_PROD) return;
             var content = message.Content.ToLower();
 
             if (content.Contains("morko") || message.Content.ToLower().Contains("mörkö"))

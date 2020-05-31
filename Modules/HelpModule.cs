@@ -3,10 +3,10 @@ using Discord.Commands;
 using System;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using MorkoBotRavenEdition.Utilities.Exceptions;
 
 namespace MorkoBotRavenEdition.Modules
 {
@@ -15,7 +15,6 @@ namespace MorkoBotRavenEdition.Modules
     /// </summary>
     [Summary("Help Module")]
     [Description("Everything you need to know about Morko!")]
-    [Group("help")]
     internal class HelpModule : ModuleBase
     {
         private readonly CommandService _commandService;
@@ -35,12 +34,17 @@ namespace MorkoBotRavenEdition.Modules
             return true;
         }
 
-        [Command, Summary(@"Gets help about all server commands.")]
-        public async Task HelpAsync()
+        [Command("help"), Summary(@"Gets help about server commands.")]
+        public async Task HelpAsync([Summary(@"The command to get help about (optional).")] string command = null)
         {
+            if (!string.IsNullOrWhiteSpace(command)) {
+                await GetCommandInfoAsync(command);
+                return;
+            }
+
             var userPm = new EmbedBuilder();
             userPm.WithTitle(@"Server Help Information");
-            userPm.WithDescription(@"Tip: You can use !help command <command> for detailed information on a single command.");
+            userPm.WithDescription(@"Tip: You can use !help <command> for detailed information on a single command.");
             userPm.WithColor(Color.Green);
 
             foreach (var module in _commandService.Modules)
@@ -49,21 +53,22 @@ namespace MorkoBotRavenEdition.Modules
                     continue;
 
                 var stringBuilder = new StringBuilder();
-
-                foreach (var command in module.Commands)
+                foreach (var cmd in module.Commands)
                 {
-                    if (!(await TestObjectPreconditions(command, command)))
-                    {
-                        stringBuilder.AppendLine($@"!{command.Name}: No permissions to use this command.");
-                    }
-                    else
-                    {
-                        var summary = command.Summary;
-                        if (string.IsNullOrEmpty(summary))
-                            summary = @"Command has no summary.";
+                    if (!(await TestObjectPreconditions(cmd, cmd))) continue;
 
-                        stringBuilder.AppendLine($@"!{module.Name} {command.Name}: {summary}");
+                    var summary = cmd.Summary;
+                    if (string.IsNullOrEmpty(summary))
+                        summary = @"Command has no summary.";
+
+                    string cmdStr;
+                    if (module.Group != null) {
+                        cmdStr = $@"{module.Name} {cmd.Name}";
+                    } else {
+                        cmdStr = $@"{cmd.Name}";
                     }
+
+                    stringBuilder.AppendLine($@"!{cmdStr}: {summary}");
                 }
 
                 if (string.IsNullOrEmpty(stringBuilder.ToString()))
@@ -74,15 +79,13 @@ namespace MorkoBotRavenEdition.Modules
                 var attr = module.Attributes.FirstOrDefault(a => a.GetType() == typeof(DescriptionAttribute));
                 if (attr != null) description = ((DescriptionAttribute) attr).Description;
 
-                userPm.AddField($"{module.Name} - {description}", stringBuilder.ToString());
+                userPm.AddField($"{description}", stringBuilder.ToString());
             }
 
             await Context.Channel.SendMessageAsync(string.Empty, false, userPm.Build());
         }
 
-        [Command("command"), Summary(@"Gets help about a specific command, usually in more detail.")]
-        public async Task CommandAsync([Summary(@"The command you want to get information about.")] string commandName)
-        {
+        private async Task GetCommandInfoAsync(string commandName) {
             foreach (var command in _commandService.Commands)
             {
                 if (!string.Equals(commandName, command.Name, StringComparison.CurrentCultureIgnoreCase))
@@ -129,7 +132,7 @@ namespace MorkoBotRavenEdition.Modules
                 return;
             }
 
-            throw new Exception(@"The command was not found.");
+            throw new ActionException(@"The command was not found.");
         }
     }
 }

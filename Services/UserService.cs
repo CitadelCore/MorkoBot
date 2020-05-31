@@ -2,7 +2,6 @@
 using Discord.Commands;
 using Discord.WebSocket;
 using MorkoBotRavenEdition.Attributes;
-using MorkoBotRavenEdition.Models;
 using MorkoBotRavenEdition.Utilities;
 using System;
 using System.Collections.Generic;
@@ -201,7 +200,8 @@ namespace MorkoBotRavenEdition.Services
         /// </summary>
         /// <param name="actor">The user initiating the action.</param>
         /// <param name="subject">The user being modified.</param>
-        private async Task<bool> CanUserModifyUser(IUser actor, IUser subject)
+        /// <param name="preventOwner">Whether to prevent this operation if the subject is the owner</param>
+        private async Task<bool> CanUserModifyUser(IUser actor, IUser subject, bool preventOwner = false)
         {
             var ownerId = (await _client.GetApplicationInfoAsync()).Owner.Id;
 
@@ -209,23 +209,26 @@ namespace MorkoBotRavenEdition.Services
             if (actor.Id == ownerId || ((SocketGuildUser)actor).GuildPermissions.Administrator)
                 return true;
 
+            // Prevent operations on the owner
+            if (preventOwner && subject.Id == ownerId && actor.Id != ownerId)
+                return false;
+
             return ((SocketGuildUser)actor).Roles.Sum(r => r.Position) > ((SocketGuildUser)subject).Roles.Sum(r => r.Position);
         }
 
         public static async Task<bool> DoesUserHaveAnyRole(ICommandContext context, IServiceProvider services, params string[] roles)
         {
             var permitRoles = new PermitRolesAttribute(roles);
-
             return (await permitRoles.CheckPermissionsAsync(context, null, services)).IsSuccess;
         }
 
         /// <summary>
         /// Throws an exception if the specified actor cannot modify the specified subject.
         /// </summary>
-        public async Task ThrowIfCannotModify(IUser actor, IUser subject)
+        public async Task ThrowIfCannotModify(IUser actor, IUser subject, bool preventOwner = false)
         {
-            if (!(await CanUserModifyUser(actor, subject)))
-                throw new Exception("Cannot modify this user. Access denied.");
+            if (!(await CanUserModifyUser(actor, subject, preventOwner)))
+                throw new Exception("Cannot perform operations on this user. Access is denied.");
         }
 
         public static async Task ThrowIfHasNoPermissions(ICommandContext context, IServiceProvider services, params string[] roles)

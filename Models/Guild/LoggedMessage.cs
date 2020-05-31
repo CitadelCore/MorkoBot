@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Net.Sockets;
+using Discord;
 using Discord.WebSocket;
 
 // Disable these; used by EF Core
@@ -38,17 +39,22 @@ namespace MorkoBotRavenEdition.Models.Guild
         /// </summary>
         public long OriginalId { get; set; }
 
-        public static LoggedMessage FromSocketMessage(SocketMessage message)
+        /// <summary>
+        /// Whether this message has been deleted
+        /// </summary>
+        public bool Deleted { get; set; } = false;
+
+        public static LoggedMessage FromDiscordMessage(IUserMessage message)
         {
             long guild = 0;
-            if (message.Channel is SocketGuildChannel guildChannel)
+            if (message.Channel is IGuildChannel guildChannel)
                 guild = (long)guildChannel.Guild.Id;
 
             return new LoggedMessage
             {
                 Author = (long) message.Author.Id,
                 Channel = (long) message.Channel.Id,
-                Content = message.Content,
+                Content = message.Resolve(TagHandling.FullName),
                 Guild = guild,
                 Message = (long) message.Id,
                 TimeStamp = message.Timestamp,

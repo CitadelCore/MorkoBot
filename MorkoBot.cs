@@ -1,20 +1,20 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MorkoBotRavenEdition.Modules;
 using MorkoBotRavenEdition.Services;
-using MorkoBotRavenEdition.Utilities;
+using MorkoBotRavenEdition.Models.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon;
+using Amazon.S3;
 using MorkoBotRavenEdition.Services.Proxies;
-using ModuleBase = MorkoBotRavenEdition.Modules.ModuleBase;
 
 namespace MorkoBotRavenEdition
 {
@@ -25,7 +25,7 @@ namespace MorkoBotRavenEdition
     {
         private DiscordSocketClient _client;
         private CommandService _commandService;
-        private MessageRouter _router;
+        private MessageProxyEvaluator _evaluator;
         private MessageLoggerService _messageLogger;
         private IServiceProvider _serviceProvider;
 
@@ -59,22 +59,28 @@ namespace MorkoBotRavenEdition
             // Register all services in dependency injection container
             IServiceCollection serviceCollection = new ServiceCollection();
 
-            serviceCollection.AddSingleton(_client);
             serviceCollection.AddLogging(options =>
             {
+                #if DEBUG
+                options.SetMinimumLevel(LogLevel.Debug);
                 options.AddConsole();
+                #else
                 options.AddDebug();
+                #endif
             });
+
+            serviceCollection.AddSingleton<IDiscordClient>(_client);
+            serviceCollection.AddSingleton<DiscordSocketClient>(_client);
+            serviceCollection.AddSingleton<AmazonS3Client>(c => new AmazonS3Client(RegionEndpoint.EUWest2));
 
             serviceCollection.AddSingleton<BanTrackerService>();
             serviceCollection.AddSingleton<BotDbContext>();
             serviceCollection.AddSingleton<UserService>();
             serviceCollection.AddSingleton<GuildInfoService>();
             serviceCollection.AddSingleton<MessageLoggerService>();
-            serviceCollection.AddSingleton<MessageRouter>();
-            serviceCollection.AddSingleton(_commandService);
-            serviceCollection.AddLogging();
+            serviceCollection.AddSingleton<MessageProxyEvaluator>();
 
+            serviceCollection.AddSingleton(_commandService);
             serviceCollection.AddSingleton<WikiService>();
 
             // Register response proxies
@@ -82,14 +88,18 @@ namespace MorkoBotRavenEdition
             serviceCollection.AddSingleton<NowoResponseProxy>();
             serviceCollection.AddSingleton<SpecialResponseProxy>();
 
+            // random
+            serviceCollection.AddTransient<LogExportTask>();
+
             _serviceProvider = serviceCollection.BuildServiceProvider();
+            var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+
             _logger = _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Core");
             _logger.LogInformation(@"Log provider initialized.");
 
             // Init the message logger
             _messageLogger = _serviceProvider.GetService<MessageLoggerService>();
-
-            _router = _serviceProvider.GetRequiredService<MessageRouter>();
+            _evaluator = _serviceProvider.GetRequiredService<MessageProxyEvaluator>();
 
             // Add all modules
             var modules = new List<Type>
@@ -136,14 +146,13 @@ namespace MorkoBotRavenEdition
             return Task.CompletedTask;
         }
 
-        private Task Client_MessageDeleted(Cacheable<IMessage, ulong> arg1, ISocketMessageChannel arg2)
-        {
-            _logger.LogInformation(arg1.HasValue
-                ? $@"Message ID {arg1.Id} was deleted. Original content: {arg1.Value}"
-                : $@"Message ID {arg1.Id} was deleted. Could not retrieve the message content because it was not found in the cache.");
-
-            return Task.CompletedTask;
+        private async Task Client_MessageUpdated(Cacheable<IMessage, ulong> arg1, SocketMessage arg2, ISocketMessageChannel arg3) {
+            if (!(arg2 is IUserMessage message)) return;
+            await _messageLogger.LogUpdate(message, arg1.Id);
         }
+
+        private async Task Client_MessageDeleted(Cacheable<IMessage, ulong> arg1, ISocketMessageChannel arg2)
+            => await _messageLogger.LogDelete(arg1.Id);
 
         private Task Client_UserLeft(SocketGuildUser arg)
         {
@@ -163,31 +172,29 @@ namespace MorkoBotRavenEdition
             await _client.SetGameAsync(@"with Reality");
         }
 
-        private async Task Client_MessageUpdated(Cacheable<IMessage, ulong> arg1, SocketMessage arg2, ISocketMessageChannel arg3)
-        {
-            // update logged here
-            await _messageLogger.LogUpdate(arg2, arg1.Id);
-        }
-
         private async Task SentMessage(SocketMessage arg)
         {
-            if (!(arg is SocketUserMessage message) || arg.Author.IsBot) return;
+            if (!(arg is IUserMessage message) || arg.Author.IsBot) return;
 
             try {
                 // log the message
-                await _messageLogger.LogSend(arg);
+                await _messageLogger.LogSend(message);
             } catch (Exception e) {
                 _logger.LogError($"Failed to log message");
                 _logger.LogError(e.ToString());
                 throw;
             }
 
-            var argPos = 0;
-            var isCommand = !(!message.HasCharPrefix('!', ref argPos) || 
-                                   message.HasMentionPrefix(_client.CurrentUser, ref argPos) ||
-                                   message.Author == _client.CurrentUser);
+            // TODO: HACK (this is just temporary) for #avalon
+            if (message.Channel.Id == 601000111690219530) return;
 
-            _router.Evaluate(_client, message, isCommand);
+            var argPos = 0;
+            var isCommand = !(
+                !message.HasCharPrefix('!', ref argPos) || 
+                message.HasMentionPrefix(_client.CurrentUser, ref argPos) ||
+                message.Author == _client.CurrentUser);
+
+            _evaluator.Evaluate(_client, message, isCommand);
             if (!isCommand) return;
 
             // into the command handler section now
@@ -203,11 +210,15 @@ namespace MorkoBotRavenEdition
             if (!result.IsSuccess)
             {
                 await message.AddReactionAsync(new Emoji("❎"));
-
                 var userPm = new EmbedBuilder();
-                userPm.WithTitle(@"Command failure");
-                userPm.WithDescription(result.ErrorReason);
-                userPm.WithColor(Color.Orange);
+
+                switch(result.Error) {
+                    default:
+                        userPm.WithTitle(@"Command failure");
+                        userPm.WithDescription(result.ErrorReason);
+                        userPm.WithColor(Color.Orange);
+                        break;
+                }
 
                 _logger.LogTrace($@"Message ID {arg.Id} encountered an execution failure: {result.ErrorReason}");
                 await arg.Channel.SendMessageAsync(string.Empty, false, userPm.Build());

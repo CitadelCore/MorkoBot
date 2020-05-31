@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Discord.WebSocket;
+using Discord;
 using MorkoBotRavenEdition.Utilities;
 
 namespace MorkoBotRavenEdition.Services.Proxies
@@ -23,7 +23,7 @@ namespace MorkoBotRavenEdition.Services.Proxies
             "𝕠𝕨𝕠", "𝕆𝕨𝕆"
         };
 
-        internal override async Task Run(DiscordSocketClient client, SocketUserMessage message)
+        internal override async Task Run(IDiscordClient client, IUserMessage message)
         {
             var normalised = MessageNormaliser.Normalise(message.Content).ToLower();
             //normalised = normalised.Replace(" ", string.Empty); // prevent stuff like "o w o" by removing whitespace

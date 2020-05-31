@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using Discord.WebSocket;
+using Discord;
 
 namespace MorkoBotRavenEdition.Services.Proxies
 {
@@ -17,6 +17,6 @@ namespace MorkoBotRavenEdition.Services.Proxies
 
         public ResponseProxyType ProxyType = ResponseProxyType.All;
 
-        internal abstract Task Run(DiscordSocketClient client, SocketUserMessage message);
+        internal abstract Task Run(IDiscordClient client, IUserMessage message);
     }
 }

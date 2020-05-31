@@ -26,7 +26,7 @@ namespace MorkoBotRavenEdition.Modules
         [Summary(@"Returns information from an INFRA map.")]
         public async Task InfoAsync([Remainder] [Summary(@"The map to get information about.")] string mapName)
         {
-            // Get basic map information
+            // Get map information
             var map = await _wikiService.GetMapInformationAsync(mapName.ToLower());
 
             if (map == null)
@@ -35,7 +35,6 @@ namespace MorkoBotRavenEdition.Modules
             // Add general fields
             var builder = new EmbedBuilder();
             builder.WithTitle($@"Showing information for map {map.Name}.");
-            builder.WithDescription(@"Shows map information for a specific INFRA map. Map statistics are fetched from the INFRA wiki.");
             builder.WithColor(Color.Green);
             builder.WithUrl(map.WikiUrl);
             builder.WithThumbnailUrl(map.ThumbUrl);

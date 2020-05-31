@@ -18,13 +18,13 @@ namespace MorkoBotRavenEdition.Attributes
         }
 
         /// <summary>
-        /// Roles that can use these commands regardless of per
+        /// Roles that can use these commands regardless of permissions
         /// </summary>
         private readonly IList<string> _overrideRoles = new List<string>()
         {
             "Global Admin",
             "Loiste Staff",
-            "Discord Admin",
+            "Administrator",
         };
 
         public override async Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command, IServiceProvider services)

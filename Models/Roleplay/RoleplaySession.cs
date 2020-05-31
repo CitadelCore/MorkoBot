@@ -16,7 +16,7 @@ namespace MorkoBotRavenEdition.Models.Roleplay
     internal class RoleplaySession
     {
         [Key]
-        public int SessionId { get; set; }
+        public int Id { get; set; }
 
         // Multiverse info
         public int MultiverseId { get; set; }

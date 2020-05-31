@@ -11,7 +11,7 @@ namespace MorkoBotRavenEdition.Models.Roleplay
 {
     internal class RoleplayCharacter
     {
-        public enum RoleplayGender
+        public enum GenderType
         {
             Default,
             Male,
@@ -19,7 +19,7 @@ namespace MorkoBotRavenEdition.Models.Roleplay
         }
 
         [Key]
-        public int CharacterId { get; set; }
+        public int Id { get; set; }
 
         /// <summary>
         /// Holds the Discord ID of the player who created
@@ -39,7 +39,7 @@ namespace MorkoBotRavenEdition.Models.Roleplay
         public string Name { get; set; }
         public string Nickname { get; set; }
         public int Age { get; set; }
-        public RoleplayGender Gender { get; set; }
+        public GenderType Gender { get; set; }
         public string ImageUri { get; set; }
 
         // Description

@@ -12,10 +12,10 @@ namespace MorkoBotRavenEdition.Models.Roleplay
     internal class RoleplayMultiverse
     {
         [Key]
-        public int MultiverseId { get; set; }
-        public string MultiverseName { get; set; }
+        public int Id { get; set; }
+        public string Name { get; set; }
 
         // Guild info
-        public long GuildId { get; set; }
+        public long Guild { get; set; }
     }
 }

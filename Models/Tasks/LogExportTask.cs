@@ -48,22 +48,23 @@ namespace MorkoBotRavenEdition.Models.Tasks
             _start = start;
             _end = end;
 
-            var channels = _context.LoggedMessages
+            var channels = (await _context.LoggedMessages
                 .Where(m => 
                     m.Guild == _guild && 
                     (!channel.HasValue || m.Channel == channel) && 
                     (!start.HasValue || (m.TimeStamp.Date >= start.Value.Date)) && 
                     (!end.HasValue || (m.TimeStamp.Date <= end.Value.Date)) && 
                     m.Author != (long)_client.CurrentUser.Id)
-                .OrderBy(m => m.TimeStamp)
-                .GroupBy(m => m.Channel);
+                .OrderBy(m => m.TimeStamp).ToListAsync())
+                .GroupBy(m => m.Channel)
+                .Select(m => new { Channel = m.Key, Messages = m.ToList() });
 
-            if (!await channels.AnyAsync()) return null;
+            if (!channels.Any()) return null;
 
             var logs = new List<(long, string)>();
-            await channels.ForEachAsync(async (c) => {
-               logs.Add((c.Key, await BuildChannelLogAsync(c)));
-            });
+            foreach (var c in channels)  {
+                logs.Add((c.Channel, await BuildChannelLogAsync(c.Messages)));
+            }
 
             // use hastebin if only one, and small enough
             if (logs.Count() == 1 && logs.First().Item2.Length < 200) {

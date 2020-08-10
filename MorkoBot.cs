@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using MorkoBotRavenEdition.Modules;
 using MorkoBotRavenEdition.Services;
 using MorkoBotRavenEdition.Models.Tasks;
+using MorkoBotRavenEdition.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -14,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.S3;
+using Amazon.SQS;
 using MorkoBotRavenEdition.Services.Proxies;
 
 namespace MorkoBotRavenEdition
@@ -29,7 +31,7 @@ namespace MorkoBotRavenEdition
         private MessageLoggerService _messageLogger;
         private IServiceProvider _serviceProvider;
 
-        private ILogger _logger;
+        public static ILogger Logger;
         public static ulong DefaultGuild { get; private set; }
         public static ulong DefaultChannel { get; private set; }
         
@@ -61,23 +63,26 @@ namespace MorkoBotRavenEdition
 
             serviceCollection.AddLogging(options =>
             {
+                options.AddConsole();
+
                 #if DEBUG
                 options.SetMinimumLevel(LogLevel.Debug);
-                options.AddConsole();
                 #else
-                options.AddDebug();
+                options.SetMinimumLevel(LogLevel.Information);
                 #endif
             });
 
             serviceCollection.AddSingleton<IDiscordClient>(_client);
             serviceCollection.AddSingleton<DiscordSocketClient>(_client);
             serviceCollection.AddSingleton<AmazonS3Client>(c => new AmazonS3Client(RegionEndpoint.EUWest2));
+            serviceCollection.AddSingleton<AmazonSQSClient>(c => new AmazonSQSClient(RegionEndpoint.EUWest2));
 
             serviceCollection.AddSingleton<BanTrackerService>();
             serviceCollection.AddSingleton<BotDbContext>();
             serviceCollection.AddSingleton<UserService>();
             serviceCollection.AddSingleton<GuildInfoService>();
             serviceCollection.AddSingleton<MessageLoggerService>();
+            serviceCollection.AddSingleton<GPT2Service>();
             serviceCollection.AddSingleton<MessageProxyEvaluator>();
 
             serviceCollection.AddSingleton(_commandService);
@@ -94,8 +99,8 @@ namespace MorkoBotRavenEdition
             _serviceProvider = serviceCollection.BuildServiceProvider();
             var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
 
-            _logger = _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Core");
-            _logger.LogInformation(@"Log provider initialized.");
+            Logger = _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Core");
+            Logger.LogInformation(@"Log provider initialized.");
 
             // Init the message logger
             _messageLogger = _serviceProvider.GetService<MessageLoggerService>();
@@ -119,10 +124,10 @@ namespace MorkoBotRavenEdition
 
             // Set up database
 #if DEBUG
-            _logger.LogInformation(@"This is a debug build. Bot will run in development mode with developer account token. Local SQLite database will be used.");
+            Logger.LogInformation(@"This is a debug build. Bot will run in development mode with developer account token. Local SQLite database will be used.");
             await _client.LoginAsync(TokenType.Bot, ConfigurationManager.AppSettings.Get("DevToken"));
 #else
-            _logger.LogInformation(@"This is a production build. Starting bot in production mode with regular token. Remote SQL database will be used.");
+            Logger.LogInformation(@"This is a production build. Starting bot in production mode with regular token. Remote SQL database will be used.");
             await _client.LoginAsync(TokenType.Bot, ConfigurationManager.AppSettings.Get("BotToken"));
 #endif
             // Start the client so it's ready for use by services
@@ -156,13 +161,13 @@ namespace MorkoBotRavenEdition
 
         private Task Client_UserLeft(SocketGuildUser arg)
         {
-            _logger.LogTrace($@"User {arg.Id} has left guild {arg.Guild.Id}.");
+            Logger.LogTrace($@"User {arg.Id} has left guild {arg.Guild.Id}.");
             return Task.CompletedTask;
         }
 
         private Task Client_UserJoined(SocketGuildUser arg)
         {
-            _logger.LogTrace($@"User {arg.Id} has joined guild {arg.Guild.Id}.");
+            Logger.LogTrace($@"User {arg.Id} has joined guild {arg.Guild.Id}.");
             return Task.CompletedTask;
         }
 
@@ -180,8 +185,8 @@ namespace MorkoBotRavenEdition
                 // log the message
                 await _messageLogger.LogSend(message);
             } catch (Exception e) {
-                _logger.LogError($"Failed to log message");
-                _logger.LogError(e.ToString());
+                Logger.LogError($"Failed to log message");
+                Logger.LogError(e.ToString());
                 throw;
             }
 
@@ -198,7 +203,7 @@ namespace MorkoBotRavenEdition
             if (!isCommand) return;
 
             // into the command handler section now
-            _logger.LogTrace($@"Recieved command with message ID {arg.Id} from user {arg.Author.Id}: {arg.Content}");
+            Logger.LogTrace($@"Recieved command with message ID {arg.Id} from user {arg.Author.Id}: {arg.Content}");
 
             var context = new CommandContext(_client, message);
             var typing = arg.Channel.EnterTypingState();
@@ -209,23 +214,11 @@ namespace MorkoBotRavenEdition
             // Handle command failure and success.
             if (!result.IsSuccess)
             {
-                await message.AddReactionAsync(new Emoji("❎"));
-                var userPm = new EmbedBuilder();
-
-                switch(result.Error) {
-                    default:
-                        userPm.WithTitle(@"Command failure");
-                        userPm.WithDescription(result.ErrorReason);
-                        userPm.WithColor(Color.Orange);
-                        break;
-                }
-
-                _logger.LogTrace($@"Message ID {arg.Id} encountered an execution failure: {result.ErrorReason}");
-                await arg.Channel.SendMessageAsync(string.Empty, false, userPm.Build());
+                await MessageUtilities.HandleCommandFailure(message, result);
             }
             else
             {
-                _logger.LogTrace($@"Message ID {arg.Id} completed execution successfully.");
+                Logger.LogTrace($@"Message ID {arg.Id} completed execution successfully.");
                 await message.AddReactionAsync(new Emoji("✅"));
             }
 
@@ -236,7 +229,7 @@ namespace MorkoBotRavenEdition
 
         private Task Log(LogMessage arg)
         {
-            if (_logger == null)
+            if (Logger == null)
             {
                 Console.WriteLine(arg.ToString());
             }
@@ -268,7 +261,7 @@ namespace MorkoBotRavenEdition
                         throw new ArgumentOutOfRangeException();
                 }
 
-                _logger.Log(level, arg.Message);
+                Logger.Log(level, arg.Message);
             }
             
             return Task.CompletedTask;

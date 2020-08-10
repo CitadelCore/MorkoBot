@@ -30,35 +30,37 @@ namespace MorkoBotRavenEdition.Services
             _logger = loggerFactory.CreateLogger<MessageLoggerService>();
             _loggerFactory = loggerFactory;
 
-            var infoThread = new Thread(async () => {
-                while(true) {
-                    // wait for 10 seconds
-                    Thread.Sleep(10000);
-
-                    // report state of all
-                    var toRemove = new List<ulong>();
-                    foreach (var task in _backfillTasks) {
-                        var val = task.Value;
-                        if (!val.Event.IsSet) {
-                            await val.InvokerChannel.SendStatusAsync("Message Backfill", $@"Processing channel {val.CurrentChannel}", Color.Blue);
-                            continue;
-                        } else {
-                            toRemove.Add(task.Key);
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(val.Error)) {
-                            await val.InvokerChannel.SendStatusAsync("Message Backfill", $@"Backfill failure!", Color.Red);
-                        } else {
-                            await val.InvokerChannel.SendStatusAsync("Message Backfill", $@"Backfill completed in {val.TimeTaken}ms, {val.MessagesProcessed} processed, {val.MessagesAdded} added.", Color.Green);
-                        }
-                    }
-
-                    // remove completed
-                    toRemove.ForEach(r => _backfillTasks.Remove(r));
-                }
-            });
+            var infoThread = new Thread(async () => await WatchBackfillAsync());
 
             infoThread.Start();
+        }
+
+        private async Task WatchBackfillAsync() {
+            while(true) {
+                // wait for 10 seconds
+                Thread.Sleep(10000);
+
+                // report state of all
+                var toRemove = new List<ulong>();
+                foreach (var task in _backfillTasks) {
+                    var val = task.Value;
+                    if (!val.Event.IsSet) {
+                        await val.InvokerChannel.SendStatusAsync("Message Backfill", $@"Processing channel {val.CurrentChannel}", Color.Blue);
+                        continue;
+                    } else {
+                        toRemove.Add(task.Key);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(val.Error)) {
+                        await val.InvokerChannel.SendStatusAsync("Message Backfill", $@"Backfill failure!", Color.Red);
+                    } else {
+                        await val.InvokerChannel.SendStatusAsync("Message Backfill", $@"Backfill completed in {val.TimeTaken}ms, {val.MessagesProcessed} processed, {val.MessagesAdded} added.", Color.Green);
+                    }
+                }
+
+                // remove completed
+                toRemove.ForEach(r => _backfillTasks.Remove(r));
+            }
         }
 
         public async Task LogSend(IUserMessage message)

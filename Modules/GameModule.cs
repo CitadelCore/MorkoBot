@@ -18,6 +18,7 @@ namespace MorkoBotRavenEdition.Modules
         private static readonly Random Random = new Random();
         private readonly UserService _userService;
         private readonly GuildInfoService _infoService;
+        private readonly GPT2Service _gpt2Service;
 
         // Increment specific vars
         private static IUserMessage _incrementCache;
@@ -27,6 +28,7 @@ namespace MorkoBotRavenEdition.Modules
         {
             _userService = serviceProvider.GetService<UserService>();
             _infoService = serviceProvider.GetService<GuildInfoService>();
+            _gpt2Service = serviceProvider.GetService<GPT2Service>();
         }
 
         [Command("increment"), Summary(@"Increments your increment counter.")]
@@ -52,32 +54,11 @@ namespace MorkoBotRavenEdition.Modules
             await _userService.SaveProfile(profile);
         }
 
-        [Command("increment info"), Summary(@"Retrieves information about the current increment counter.")]
-        public async Task IncrementInfoAsync()
+        [Command("gpt2"), Summary(@"Submits some text to the GPT2 model")]
+        [GuildExclusive(435545282760146944)] // Reality Enclave
+        public async Task Gpt2SubmitAsync(string prefix)
         {
-            var guildInfo = await _infoService.GetGuildInfo(Context.Guild.Id);
-
-            var builder = new EmbedBuilder();
-            builder.WithTitle(@"Game Module");
-            builder.WithDescription(@"Showing current increment statistics.");
-            builder.WithColor(Color.Green);
-            builder.AddField(@"Current Count", guildInfo.IncrementCount, true);
-            builder.AddField(@"Target Count", guildInfo.IncrementTarget, true);
-            builder.AddField(@"Increments Left", guildInfo.IncrementTarget - guildInfo.IncrementCount, true);
-
-            await Context.Channel.SendMessageAsync(string.Empty, false, builder.Build());
-        }
-
-        [Command("increment reset"), Summary(@"Can be used by moderators to reset a user's increment cooldown.")]
-        [PermitRoles("Discord Moderator")]
-        public async Task IncrementResetAsync([Summary(@"The user to reset.")] IUser user)
-        {
-            var profile = await _userService.GetProfile(Context.User.Id, Context.Guild.Id);
-            
-            profile.LastIncremented = DateTime.Now - TimeSpan.FromHours(1);
-            await _userService.SaveProfile(profile);
-
-            await Context.Channel.SendMessageAsync(string.Empty, false, GetResponseEmbed(@"Successfully reset the user's increment cooldown.", Color.Green).Build());
+            await _gpt2Service.QueueRequestAsync(Context.Message, prefix);
         }
 
         /// <summary>

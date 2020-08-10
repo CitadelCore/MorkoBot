@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using MorkoBotRavenEdition.Attributes;
 using MorkoBotRavenEdition.Models.User;
+using MorkoBotRavenEdition.Utilities;
 
 namespace MorkoBotRavenEdition.Modules
 {
@@ -149,34 +150,7 @@ namespace MorkoBotRavenEdition.Modules
             var result = await _commandService.ExecuteAsync(ctx, argPos, ServiceProvider);
             if (!result.IsSuccess)
             {
-                var userPm = new EmbedBuilder();
-                userPm.WithFooter($"Impersonating {user.Username}#{user.Discriminator}");
-
-                switch(result.Error) {
-                    case CommandError.Exception:
-                        if (result is ExecuteResult exec) {
-                            var errorId = Guid.NewGuid();
-
-                            var errStr = $@"eID Ref# {errorId}";
-
-                            // TODO: oof, this overwrites impersonation info
-                            userPm.WithFooter(errStr);
-                            //_logger.LogError(errStr);
-                            //_logger.LogError(exec.Exception.ToString());
-                        }
-
-                        userPm.WithTitle(@"Internal Exception");
-                        userPm.WithDescription("Please check server logs for a stack trace.");
-                        userPm.WithColor(Color.Red);
-                        break;
-                    default:
-                        userPm.WithTitle(@"Command failure");
-                        userPm.WithDescription(result.ErrorReason);
-                        userPm.WithColor(Color.Orange);
-                        break;
-                }
-                
-                await Context.Channel.SendMessageAsync(string.Empty, false, userPm.Build());
+                await MessageUtilities.HandleCommandFailure(Context.Message, result, user);
             }
         }
     }
